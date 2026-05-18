@@ -826,25 +826,25 @@ async function renderCard() {
 
   // Monogram top-right
   if (state.watermarks.monogram_tr) {
-    const sz = 290;
+    const wm1_sz = 290;
     ctx.save();
     ctx.globalAlpha = 0.08;
     ctx.globalCompositeOperation = 'screen';
-    ctx.translate(CARD_W + 40 - sz/2, -50 + sz/2);
+    ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
     ctx.rotate(10 * Math.PI/180);
-    ctx.drawImage(state.watermarks.monogram_tr, -sz/2, -sz/2, sz, sz);
+    ctx.drawImage(state.watermarks.monogram_tr, -wm1_sz/2, -wm1_sz/2, wm1_sz, wm1_sz);
     ctx.restore();
   }
 
   // Monogram bottom-left
   if (state.watermarks.monogram_bl) {
-    const sz = 290;
+    const wm2_sz = 290;
     ctx.save();
     ctx.globalAlpha = 0.07;
     ctx.globalCompositeOperation = 'screen';
-    ctx.translate(-40 + sz/2, CARD_H + 50 - sz/2);
+    ctx.translate(-40 + wm2_sz/2, CARD_H + 50 - wm2_sz/2);
     ctx.rotate(-8 * Math.PI/180);
-    ctx.drawImage(state.watermarks.monogram_bl, -sz/2, -sz/2, sz, sz);
+    ctx.drawImage(state.watermarks.monogram_bl, -wm2_sz/2, -wm2_sz/2, wm2_sz, wm2_sz);
     ctx.restore();
   }
 
@@ -853,12 +853,12 @@ async function renderCard() {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = 1;
-    const w = 364;
-    const aspect = state.watermarks.photo_centre.naturalHeight / state.watermarks.photo_centre.naturalWidth;
-    const h = w * aspect;
+    const wm3_w = 364;
+    const wm3_aspect = state.watermarks.photo_centre.naturalHeight / state.watermarks.photo_centre.naturalWidth;
+    const wm3_h = wm3_w * wm3_aspect;
     ctx.translate(CARD_W/2 - 20, CARD_H/2 + 10);
     ctx.rotate(4 * Math.PI/180);
-    ctx.drawImage(state.watermarks.photo_centre, -w/2, -h/2, w, h);
+    ctx.drawImage(state.watermarks.photo_centre, -wm3_w/2, -wm3_h/2, wm3_w, wm3_h);
     ctx.restore();
   }
 
@@ -867,14 +867,14 @@ async function renderCard() {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = 1;
-    const w = 126;
-    const aspect = state.watermarks.player_left.naturalHeight / state.watermarks.player_left.naturalWidth;
-    const h = w * aspect;
+    const wm4_w = 126;
+    const wm4_aspect = state.watermarks.player_left.naturalHeight / state.watermarks.player_left.naturalWidth;
+    const wm4_h = wm4_w * wm4_aspect;
     // bottom:270px left:-10px rotate(-3deg)
-    const x = -10, y = CARD_H - 270 - h;
-    ctx.translate(x + w/2, y + h/2);
+    const wm4_x = -10, wm4_y = CARD_H - 270 - wm4_h;
+    ctx.translate(wm4_x + wm4_w/2, wm4_y + wm4_h/2);
     ctx.rotate(-3 * Math.PI/180);
-    ctx.drawImage(state.watermarks.player_left, -w/2, -h/2, w, h);
+    ctx.drawImage(state.watermarks.player_left, -wm4_w/2, -wm4_h/2, wm4_w, wm4_h);
     ctx.restore();
   }
 
@@ -883,13 +883,13 @@ async function renderCard() {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = 1;
-    const w = 200;
-    const aspect = state.watermarks.player_right.naturalHeight / state.watermarks.player_right.naturalWidth;
-    const h = w * aspect;
-    const x = CARD_W - 10 - w, y = CARD_H - 20 - h;
-    ctx.translate(x + w/2, y + h/2);
+    const wm5_w = 200;
+    const wm5_aspect = state.watermarks.player_right.naturalHeight / state.watermarks.player_right.naturalWidth;
+    const wm5_h = wm5_w * wm5_aspect;
+    const wm5_x = CARD_W - 10 - wm5_w, wm5_y = CARD_H - 20 - wm5_h;
+    ctx.translate(wm5_x + wm5_w/2, wm5_y + wm5_h/2);
     ctx.rotate(3 * Math.PI/180);
-    ctx.drawImage(state.watermarks.player_right, -w/2, -h/2, w, h);
+    ctx.drawImage(state.watermarks.player_right, -wm5_w/2, -wm5_h/2, wm5_w, wm5_h);
     ctx.restore();
   }
 
