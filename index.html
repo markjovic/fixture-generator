@@ -715,7 +715,6 @@ function buildRoundList() {
   const list = document.getElementById('round-list');
   list.innerHTML = '';
   state.rounds.forEach((f, i) => {
-    if (f.type !== 'fixture') return;
     const sel = state.selected.has(i);
     const isBye = f.type === 'bye';
     const item = document.createElement('label');
@@ -779,9 +778,8 @@ async function renderCard() {
   const homeVenue = state.config.home_venue || '';
   const hasFinals = document.getElementById('has-finals').checked;
 
-  const fixtures = state.rounds.filter((_,i) => state.selected.has(i));
-  // allRows = selected items from state.rounds (already sorted at parse time)
   const allRows = state.rounds.filter((_,i) => state.selected.has(i));
+  const fixtures = allRows.filter(r => r.type === 'fixture');
 
   await Promise.all(fixtures.map(f => getCrest(f.opponent)));
 
