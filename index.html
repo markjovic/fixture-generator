@@ -4,9 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fixture Card Generator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<script>
+// Load Barlow Condensed via FontFace API so canvas gets it reliably
+window.__fontsLoaded = (async () => {
+  const weights = [
+    [700, 'https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B46r2z3bWuQ.woff2'],
+    [800, 'https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B47b1z3bWuQ.woff2'],
+    [900, 'https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B45L0z3bWuQ.woff2'],
+  ];
+  await Promise.all(weights.map(async ([w, url]) => {
+    const ff = new FontFace('Barlow Condensed', `url(${url}) format('woff2')`, {
+      weight: String(w), style: 'normal', display: 'block'
+    });
+    const loaded = await ff.load();
+    document.fonts.add(loaded);
+  }));
+})();
+</script>
 <style>
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1111,14 +1126,6 @@ async function renderCard() {
     const w2 = document.getElementById('finals-w2').value;
     const gf = document.getElementById('finals-gf').value;
 
-    // Accent line
-    const lg = ctx.createLinearGradient(PAD_X, 0, CARD_W-PAD_X, 0);
-    lg.addColorStop(0, 'transparent');
-    lg.addColorStop(0.2, ac); lg.addColorStop(0.8, ac);
-    lg.addColorStop(1, 'transparent');
-    ctx.fillStyle = lg; ctx.fillRect(PAD_X, ry, CARD_W-PAD_X*2, 1.5);
-    ry += 12;
-
     // Finals — spans pills section only, matching reference layout
     const fxStart = xLP_outer;
     const fxEnd   = CARD_W - PAD_X;
@@ -1342,22 +1349,8 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   btn.textContent = 'Rendering…';
   btn.disabled = true;
   try {
-    // Force all font weights into canvas cache before drawing
-    await document.fonts.ready;
-    await Promise.all([
-      document.fonts.load('900 16px "Barlow Condensed"'),
-      document.fonts.load('800 16px "Barlow Condensed"'),
-      document.fonts.load('700 16px "Barlow Condensed"'),
-    ]);
-    // Warm up via offscreen canvas so canvas font cache is primed
-    try {
-      const oc = new OffscreenCanvas(400, 60);
-      const octx = oc.getContext('2d');
-      for (const w of ['900','800','700']) {
-        octx.font = `${w} 16px "Barlow Condensed"`;
-        octx.fillText('NORWOOD', 0, 40);
-      }
-    } catch(e) {}
+    // Wait for fonts loaded via FontFace API
+    await window.__fontsLoaded;
     await renderCard();
   } catch(err) {
     console.error('renderCard error:', err);
