@@ -6,7 +6,7 @@
 <title>Fixture Card Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&display=block" rel="stylesheet">
+<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&display=block" rel="stylesheet">
 <script>
 window.__fontsLoaded = new Promise(resolve => {
   // Poll until Barlow Condensed is available in document.fonts
@@ -387,6 +387,8 @@ html, body {
 <body>
 <!-- Force fonts to load by rendering in DOM -->
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
+  font-family:'Barlow Condensed',Arial;font-weight:400;font-size:16px">NORWOOD</div>
+<div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
   font-family:'Barlow Condensed',Arial;font-weight:900;font-size:16px">NORWOOD</div>
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
   font-family:'Barlow Condensed',Arial;font-weight:800;font-size:16px">NORWOOD</div>
@@ -398,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.5</span>
+    <span class="badge">Beta 0.6</span>
   </header>
 
   <!-- Left panel -->
@@ -805,10 +807,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Barlow Condensed"';
-  console.log('[v0.5] Canvas font resolved to:', testCtx.font);
-  console.log('[v0.5] BC 900 check:', document.fonts.check('900 16px "Barlow Condensed"'));
-  console.log('[v0.5] fonts.check 900:', document.fonts.check('900 16px "Barlow Condensed"'));
-  console.log('[v0.5] fonts.check 800:', document.fonts.check('800 16px "Barlow Condensed"'));
+  console.log('[v0.6] Canvas font resolved to:', testCtx.font);
+  console.log('[v0.6] BC 900 check:', document.fonts.check('900 16px "Barlow Condensed"'));
+  console.log('[v0.6] fonts.check 900:', document.fonts.check('900 16px "Barlow Condensed"'));
+  console.log('[v0.6] fonts.check 800:', document.fonts.check('800 16px "Barlow Condensed"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -962,8 +964,8 @@ async function renderCard() {
     hx += bw + 14;
   }
 
-  const nameSize = teamName.length > 16 ? 42 : teamName.length > 12 ? 48 : 54;
-  ctx.font = `700 ${nameSize}px "Barlow Condensed",Arial`;
+  const nameSize = teamName.length > 16 ? 46 : teamName.length > 12 ? 52 : 58;
+  ctx.font = `600 ${nameSize}px "Barlow Condensed",Arial`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
   // Simulate -webkit-text-stroke + text-shadow from reference
@@ -985,7 +987,7 @@ async function renderCard() {
   ctx.fillStyle = '#ffffff';
   ctx.fillText(teamName, hx, hy + 2);
 
-  ctx.font = `700 16px "Barlow Condensed",Arial`;
+  ctx.font = `600 17px "Barlow Condensed",Arial`;
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
@@ -1026,7 +1028,7 @@ async function renderCard() {
       const bmidY   = ry + BYE_H/2;
       ctx.save();
       // Measure text first
-      ctx.font = `800 9px "Barlow Condensed",Arial`;
+      ctx.font = `400 10px "Barlow Condensed",Arial`;
       const btw = ctx.measureText('BYE WEEK').width + 20; // +padding
       const lineW = (bxEnd - bxStart - btw) / 2;
       // Left gradient line
@@ -1047,7 +1049,7 @@ async function renderCard() {
       ctx.fillStyle = lg2;
       ctx.fillRect(bxEnd - lineW, bmidY - 0.75, lineW, 1.5);
       // Text — no background, drawn directly on card
-      ctx.font = `800 9px "Barlow Condensed",Arial`;
+      ctx.font = `400 10px "Barlow Condensed",Arial`;
       ctx.fillStyle = ac;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
@@ -1071,7 +1073,7 @@ async function renderCard() {
 
     // Round label (vertical)
     ctx.save();
-    ctx.font = `900 13px "Barlow Condensed",Arial`;
+    ctx.font = `600 15px "Barlow Condensed",Arial`;
     ctx.fillStyle = rlCol;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
@@ -1094,13 +1096,13 @@ async function renderCard() {
     const dbMX = dbX + dbW/2;
     const dbMY = dbY + dbH/2;
     // Date: 14px 900 — use 'middle' baseline, offset up by half line-height
-    ctx.font = `600 15px "Barlow Condensed",Arial`;
+    ctx.font = `400 17px "Barlow Condensed",Arial`;
     ctx.fillStyle = dbTxt;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(f.date, dbMX, dbMY - 7);
     // Time: 10px 800
-    ctx.font = `600 10px "Barlow Condensed",Arial`;
+    ctx.font = `400 10px "Barlow Condensed",Arial`;
     ctx.fillStyle = dbTxt;
     ctx.globalAlpha = 0.85;
     ctx.fillText(f.time, dbMX, dbMY + 7);
@@ -1137,7 +1139,7 @@ async function renderCard() {
     ctx.fill();
     ctx.restore();
     ctx.save();
-    ctx.font = `600 12px "Barlow Condensed",Arial`;
+    ctx.font = `600 13px "Barlow Condensed",Arial`;
     ctx.fillStyle = vsCol;
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     ctx.fillText('VS', vsCX, vsCY + 0.5);
@@ -1169,16 +1171,16 @@ async function renderCard() {
 
     // Helper: draw "DATE  Label" centred at cx — date in accent, label in white
     const drawFItem = (cx, dateStr, label, y) => {
-      ctx.font = `600 13px "Barlow Condensed",Arial`;
+      ctx.font = `400 15px "Barlow Condensed",Arial`;
       const dw = ctx.measureText(dateStr + '  ').width;
-      ctx.font = `700 13px "Barlow Condensed",Arial`;
+      ctx.font = `400 15px "Barlow Condensed",Arial`;
       const lw = ctx.measureText(label).width;
       const sx = cx - (dw + lw) / 2;
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.font = `900 13px "Barlow Condensed",Arial`;
+      ctx.font = `600 15px "Barlow Condensed",Arial`;
       ctx.fillStyle = ac;
       ctx.fillText(dateStr + '  ', sx, y);
-      ctx.font = `700 13px "Barlow Condensed",Arial`;
+      ctx.font = `400 15px "Barlow Condensed",Arial`;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillText(label, sx + dw, y);
     };
@@ -1256,14 +1258,14 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.rect(textAreaX, y, textAreaW, h);
   ctx.clip();
   // Name: 700 weight (900 renders too heavy on canvas vs browser)
-  ctx.font = `600 16px "Barlow Condensed",Arial`;
+  ctx.font = `600 18px "Barlow Condensed",Arial`;
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = textAlign;
   const nameY = venue ? y + h/2 - 7 : y + h/2;
   ctx.fillText(name, textDrawX, nameY);
   if (venue) {
-    ctx.font = `600 9px "Barlow Condensed",Arial`;
+    ctx.font = `400 9px "Barlow Condensed",Arial`;
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
     ctx.fillText(venue, textDrawX, y + h/2 + 7);
   }
