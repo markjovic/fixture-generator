@@ -419,8 +419,8 @@ html, body {
         <input type="text" id="team-name" value="U12 Purple 2026" placeholder="e.g. U12 Purple 2026">
       </div>
       <div class="field">
-        <label>Age group sub-label <span style="font-weight:400;text-transform:none;letter-spacing:0">(shown under team name)</span></label>
-        <input type="text" id="team-sublabel" value="Eastern Football Netball League" placeholder="e.g. EFNL Under 12">
+        <label>Kit / division <span style="font-weight:400;text-transform:none;letter-spacing:0">(shown under club name, e.g. "Purple" or "EFNL U12")</span></label>
+        <input type="text" id="team-sublabel" value="Purple" placeholder="e.g. EFNL Under 12">
       </div>
       <div class="alert alert-info" style="font-size:12px;line-height:1.5">
         <strong>Home venue</strong> and <strong>club name</strong> are set in <code>config.json</code>. The heading badge is <code>assets/badge.png</code>. Replace these files to update them.
@@ -755,7 +755,12 @@ async function renderCard() {
   // Build fixture list
   const fixtures = state.rounds.filter((_,i) => state.selected.has(i));
   const byes = state.byes.filter(b => b.trim()).map(b => ({type:'bye', date:b.trim()}));
-  const allRows = [...fixtures, ...byes];
+  // Sort byes into fixture list by parsing date (d/m format)
+  function parseDateKey(dateStr) {
+    const parts = (dateStr||'').split('/');
+    return parts.length === 2 ? parseInt(parts[1])*100 + parseInt(parts[0]) : 9999;
+  }
+  const allRows = [...fixtures, ...byes].sort((a,b) => parseDateKey(a.date) - parseDateKey(b.date));
 
   // Pre-load all crests needed
   const crestPromises = fixtures.map(f => getCrest(f.opponent));
@@ -863,6 +868,9 @@ async function renderCard() {
   ctx.restore();
 
   ctx.restore(); // end clip
+  // Ensure blend mode is reset for all subsequent drawing
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
 
   // ── Header ──
   let hx = PAD_X, hy = PAD_Y;
@@ -911,25 +919,25 @@ async function renderCard() {
 
   for (const row of allRows) {
     if (row.type === 'bye') {
-      // Bye row
+      // Bye row - slim separator spanning full width
+      const byeH = 32;
       ctx.save();
-      ctx.strokeStyle = addAlpha(ac, 0.3);
+      ctx.strokeStyle = addAlpha(ac, 0.25);
       ctx.lineWidth = 1.5;
-      ctx.setLineDash([6,5]);
-      roundRect(ctx, rx + COL_RND + COL_DATE + 10, ry + 8, CARD_W - PAD_X*2 - COL_RND - COL_DATE - 10, ROW_H - 16, 50);
+      ctx.setLineDash([5, 6]);
+      roundRect(ctx, rx, ry + (ROW_H - byeH)/2, CARD_W - PAD_X*2, byeH, 50);
       ctx.stroke();
       ctx.restore();
-      ctx.font = `900 13px / 1 'Barlow Condensed', Arial`;
+      ctx.font = `800 12px / 1 'Barlow Condensed', Arial`;
       ctx.letterSpacing = '3px';
-      ctx.fillStyle = addAlpha(ac, 0.7);
+      ctx.fillStyle = addAlpha(ac, 0.6);
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
-      ctx.fillText(`BYE — ${row.date}`, CARD_W/2 + 30, ry + ROW_H/2);
+      ctx.fillText(`BYE  ${row.date}`, CARD_W/2, ry + ROW_H/2);
       ctx.textAlign = 'left';
     } else {
       const f = row;
       const oppShort = shortName(f.opponent);
-      const teamVenue = f.isHome ? homeVenue : f.venue;
 
       // Round label (rotated)
       ctx.save();
@@ -953,10 +961,10 @@ async function renderCard() {
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
       const dateCX = rx + COL_RND + 4 + (COL_DATE-4)/2;
-      ctx.fillText(f.date, dateCX, ry + ROW_H/2 - 6);
-      ctx.font = `700 11px / 1 'Barlow Condensed', Arial`;
-      ctx.globalAlpha = 0.85;
-      ctx.fillText(f.time, dateCX, ry + ROW_H/2 + 9);
+      ctx.fillText(f.date, dateCX, ry + ROW_H/2 - 7);
+      ctx.font = `700 10px / 1 'Barlow Condensed', Arial`;
+      ctx.globalAlpha = 0.8;
+      ctx.fillText(f.time, dateCX, ry + ROW_H/2 + 8);
       ctx.globalAlpha = 1;
 
       // Teams area
@@ -975,8 +983,9 @@ async function renderCard() {
       const rightCrest = leftIsNorwood ? state.crests[ALIASES[shortName(f.opponent)]||shortName(f.opponent)] : state.norwood_crest;
       const leftName = leftIsNorwood ? 'NORWOOD' : oppShort;
       const rightName = leftIsNorwood ? oppShort : 'NORWOOD';
-      const leftVenue = leftIsNorwood ? homeVenue : f.venue;
-      const rightVenue = leftIsNorwood ? f.venue : homeVenue;
+      // Only show venue in the opponent pill (not in the Norwood pill)
+      const leftVenue = leftIsNorwood ? '' : f.venue;
+      const rightVenue = leftIsNorwood ? f.venue : '';
 
       drawPill(ctx, leftPillX, pillY, pillW, pillH, leftGrad, leftCrest, leftName, leftVenue, 'right', pillTxt);
       drawPill(ctx, rightPillX, pillY, pillW, pillH, rightGrad, rightCrest, rightName, rightVenue, 'left', pillTxt);
@@ -1058,7 +1067,11 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, textAlign,
   ctx.beginPath(); ctx.arc(crestX + crestR, crestY + crestR, crestR, 0, Math.PI*2);
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
   ctx.clip();
-  if (crestImg) ctx.drawImage(crestImg, crestX, crestY, crestD, crestD);
+  if (crestImg) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.drawImage(crestImg, crestX, crestY, crestD, crestD);
+  }
   ctx.restore();
 
   // Name
