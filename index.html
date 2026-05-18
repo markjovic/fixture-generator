@@ -6,13 +6,13 @@
 <title>Fixture Card Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&display=block" rel="stylesheet">
+<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@700;800;900&display=block" rel="stylesheet">
 <script>
 window.__fontsLoaded = new Promise(resolve => {
   // Poll until Barlow Condensed is available in document.fonts
   const check = () => {
     // Use both quote styles to be safe across browsers
-    const loaded = document.fonts.check('900 16px "Barlow Condensed"');
+    const loaded = document.fonts.check('900 16px "Barlow Condensed"') && document.fonts.check('400 16px "Anton"');
     if (loaded) {
       resolve();
     } else {
@@ -385,7 +385,9 @@ html, body {
 </style>
 </head>
 <body>
-<!-- Force Barlow Condensed to load by rendering it in DOM -->
+<!-- Force fonts to load by rendering in DOM -->
+<div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
+  font-family:'Anton',Arial;font-weight:400;font-size:16px">NORWOOD</div>
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
   font-family:'Barlow Condensed',Arial;font-weight:900;font-size:16px">NORWOOD</div>
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
@@ -398,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.2</span>
+    <span class="badge">Beta 0.3</span>
   </header>
 
   <!-- Left panel -->
@@ -804,10 +806,11 @@ async function renderCard() {
   // Debug: check what font canvas actually resolves
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
-  testCtx.font = '900 16px "Barlow Condensed", Arial';
-  console.log('[v0.2] Canvas font resolved to:', testCtx.font);
-  console.log('[v0.2] fonts.check 900:', document.fonts.check('900 16px "Barlow Condensed"'));
-  console.log('[v0.2] fonts.check 800:', document.fonts.check('800 16px "Barlow Condensed"'));
+  testCtx.font = '400 16px "Anton"';
+  console.log('[v0.3] Canvas font resolved to:', testCtx.font);
+  console.log('[v0.3] Anton check:', document.fonts.check('400 16px "Anton"'));
+  console.log('[v0.3] fonts.check 900:', document.fonts.check('900 16px "Barlow Condensed"'));
+  console.log('[v0.3] fonts.check 800:', document.fonts.check('800 16px "Barlow Condensed"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -962,7 +965,7 @@ async function renderCard() {
   }
 
   const nameSize = teamName.length > 16 ? 42 : teamName.length > 12 ? 48 : 54;
-  ctx.font = `900 ${nameSize}px "Barlow Condensed",Arial`;
+  ctx.font = `400 ${nameSize}px "Anton",Arial`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
   // Glow layer (reference: text-shadow 0 2px 16px rgba(120,60,255,0.7))
@@ -1084,7 +1087,7 @@ async function renderCard() {
     const dbMX = dbX + dbW/2;
     const dbMY = dbY + dbH/2;
     // Date: 14px 900 — use 'middle' baseline, offset up by half line-height
-    ctx.font = `900 14px "Barlow Condensed",Arial`;
+    ctx.font = `400 14px "Anton",Arial`;
     ctx.fillStyle = dbTxt;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
@@ -1127,7 +1130,7 @@ async function renderCard() {
     ctx.fill();
     ctx.restore();
     ctx.save();
-    ctx.font = `900 11px "Barlow Condensed",Arial`;
+    ctx.font = `400 11px "Anton",Arial`;
     ctx.fillStyle = vsCol;
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     ctx.fillText('VS', vsCX, vsCY + 0.5);
@@ -1246,7 +1249,7 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.rect(textAreaX, y, textAreaW, h);
   ctx.clip();
   // Name: 700 weight (900 renders too heavy on canvas vs browser)
-  ctx.font = `800 15px "Barlow Condensed",Arial`;
+  ctx.font = `400 15px "Anton",Arial`;
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = textAlign;
