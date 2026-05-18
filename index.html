@@ -943,7 +943,6 @@ async function renderCard() {
   ctx.font = `900 ${nameSize}px "Barlow Condensed",Arial`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  ctx.letterSpacing = '1px';
   // Glow layer (reference: text-shadow 0 2px 16px rgba(120,60,255,0.7))
   ctx.save();
   ctx.shadowColor = 'rgba(120,60,255,0.75)';
@@ -955,13 +954,11 @@ async function renderCard() {
   ctx.fillText(teamName, hx, hy + 2);
 
   ctx.font = `700 16px "Barlow Condensed",Arial`;
-  ctx.letterSpacing = '1.6px';
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
   if (sublabel) {
     ctx.font = `600 11px "Barlow Condensed",Arial`;
-    ctx.letterSpacing = '0.8px';
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.fillText(sublabel.toUpperCase(), hx, hy + nameSize + 22);
   }
@@ -997,7 +994,6 @@ async function renderCard() {
       ctx.save();
       // Measure text first
       ctx.font = `800 9px "Barlow Condensed",Arial`;
-      ctx.letterSpacing = '2.5px';
       const btw = ctx.measureText('BYE WEEK').width + 20; // +padding
       const lineW = (bxEnd - bxStart - btw) / 2;
       // Left gradient line
@@ -1019,7 +1015,6 @@ async function renderCard() {
       ctx.fillRect(bxEnd - lineW, bmidY - 0.75, lineW, 1.5);
       // Text — no background, drawn directly on card
       ctx.font = `800 9px "Barlow Condensed",Arial`;
-      ctx.letterSpacing = '2.5px';
       ctx.fillStyle = ac;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
@@ -1044,7 +1039,6 @@ async function renderCard() {
     // Round label (vertical)
     ctx.save();
     ctx.font = `900 13px "Barlow Condensed",Arial`;
-    ctx.letterSpacing = '0.5px';
     ctx.fillStyle = rlCol;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
@@ -1068,7 +1062,6 @@ async function renderCard() {
     const dbMY = dbY + dbH/2;
     // Date: 14px 900 — use 'middle' baseline, offset up by half line-height
     ctx.font = `900 14px "Barlow Condensed",Arial`;
-    ctx.letterSpacing = '0.3px';
     ctx.fillStyle = dbTxt;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
@@ -1231,7 +1224,6 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.clip();
   // Name: 700 weight (900 renders too heavy on canvas vs browser)
   ctx.font = `800 15px "Barlow Condensed",Arial`;
-  ctx.letterSpacing = '0.5px';
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = textAlign;
@@ -1239,7 +1231,6 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.fillText(name, textDrawX, nameY);
   if (venue) {
     ctx.font = `600 9px "Barlow Condensed",Arial`;
-    ctx.letterSpacing = '0.2px';
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
     ctx.fillText(venue, textDrawX, y + h/2 + 7);
   }
