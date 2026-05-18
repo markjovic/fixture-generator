@@ -6,41 +6,30 @@
 <title>Fixture Card Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&display=block" rel="stylesheet">
+<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&display=block" rel="stylesheet">
 <script>
-// Belt-and-suspenders: also load via FontFace API to guarantee canvas access
-window.__fontsLoaded = (async () => {
-  // Wait for stylesheet to load first
-  await document.fonts.ready;
-  // Then explicitly request each weight we use
-  await Promise.all([
-    document.fonts.load('700 16px "Barlow Condensed"'),
-    document.fonts.load('800 16px "Barlow Condensed"'),
-    document.fonts.load('900 16px "Barlow Condensed"'),
-  ]);
-  // Verify loaded - if not, try FontFace API directly
-  const check = await document.fonts.load('900 16px "Barlow Condensed"');
-  if (!check.length) {
-    console.warn('Google Fonts blocked, loading directly...');
-    const urls = [
-      [700, 'https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B46r2z3bWuQ.woff2'],
-      [800, 'https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B47b1z3bWuQ.woff2'],
-      [900, 'https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B45L0z3bWuQ.woff2'],
-    ];
-    await Promise.all(urls.map(async ([w, url]) => {
-      try {
-        const ff = new FontFace('Barlow Condensed', `url(${url})`, {weight: String(w), display: 'block'});
-        document.fonts.add(await ff.load());
-      } catch(e) { console.error('Font load failed:', e); }
-    }));
+window.__fontsLoaded = new Promise(resolve => {
+  // Poll until Barlow Condensed is available in document.fonts
+  const check = () => {
+    if (document.fonts.check('900 16px "Barlow Condensed"') &&
+        document.fonts.check('800 16px "Barlow Condensed"') &&
+        document.fonts.check('700 16px "Barlow Condensed"')) {
+      resolve();
+    } else {
+      setTimeout(check, 50);
+    }
+  };
+  // Start polling after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(check, 100));
+  } else {
+    setTimeout(check, 100);
   }
-})();
+  // Safety timeout after 5s — proceed anyway
+  setTimeout(resolve, 5000);
+});
 </script>
 <style>
-/* Force Barlow Condensed to block display so canvas always gets it */
-@font-face { font-family: 'Barlow Condensed'; font-weight: 700; font-display: block; src: local('Barlow Condensed Bold'); }
-@font-face { font-family: 'Barlow Condensed'; font-weight: 800; font-display: block; src: local('Barlow Condensed ExtraBold'); }
-@font-face { font-family: 'Barlow Condensed'; font-weight: 900; font-display: block; src: local('Barlow Condensed Black'); }
 
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
