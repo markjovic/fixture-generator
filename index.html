@@ -11,9 +11,9 @@
 window.__fontsLoaded = new Promise(resolve => {
   // Poll until Barlow Condensed is available in document.fonts
   const check = () => {
-    if (document.fonts.check('900 16px "Barlow Condensed"') &&
-        document.fonts.check('800 16px "Barlow Condensed"') &&
-        document.fonts.check('700 16px "Barlow Condensed"')) {
+    // Use both quote styles to be safe across browsers
+    const loaded = document.fonts.check('900 16px "Barlow Condensed"');
+    if (loaded) {
       resolve();
     } else {
       setTimeout(check, 50);
@@ -385,6 +385,13 @@ html, body {
 </style>
 </head>
 <body>
+<!-- Force Barlow Condensed to load by rendering it in DOM -->
+<div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
+  font-family:'Barlow Condensed',Arial;font-weight:900;font-size:16px">NORWOOD</div>
+<div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
+  font-family:'Barlow Condensed',Arial;font-weight:800;font-size:16px">NORWOOD</div>
+<div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
+  font-family:'Barlow Condensed',Arial;font-weight:700;font-size:16px">NORWOOD</div>
 
 <div class="app">
 
