@@ -403,12 +403,8 @@ html, body {
         </div>
         <div class="round-list" id="round-list"></div>
 
-        <div style="margin-top:16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span class="section-title">Bye weeks</span>
-            <button class="btn-sm" id="btn-add-bye">+ Add bye</button>
-          </div>
-          <div class="bye-list" id="bye-list"></div>
+        <div style="margin-top:12px;text-align:right">
+          <button class="btn-sm" id="btn-add-bye">+ Add bye week</button>
         </div>
       </div>
     </div>
@@ -641,6 +637,42 @@ const ALIASES = {
   'WAVERLEY':'WAVERLEY BLUES','UPPER FERNTREE GULLY':'UPPER FTG'
 };
 
+function detectByeWeeks(fixtures) {
+  // Build a set of all d/m date strings that have a fixture
+  const fixtureDates = new Set(fixtures.map(f => f.date));
+  // Find the date range
+  function toJSDate(dm) {
+    const [d, m] = (dm||'').split('/').map(Number);
+    if (!d || !m) return null;
+    const year = new Date().getFullYear();
+    return new Date(year, m-1, d);
+  }
+  const dates = fixtures.map(f => toJSDate(f.date)).filter(Boolean);
+  if (dates.length < 2) return [];
+  const minDate = new Date(Math.min(...dates));
+  const maxDate = new Date(Math.max(...dates));
+
+  // Build set of all Saturdays/Sundays between first and last fixture
+  // that don't have a fixture — these are bye weeks
+  // PlayHQ rounds are typically weekly on the same day of week
+  // Detect the weekday fixtures are played on
+  const weekday = dates[0].getDay(); // 0=Sun, 6=Sat
+  const byes = [];
+  const cur = new Date(minDate);
+  // Step forward by 7 days from first fixture to last
+  cur.setDate(cur.getDate() + 7); // skip first
+  while (cur < maxDate) {
+    if (cur.getDay() === weekday) {
+      const dm = `${cur.getDate()}/${cur.getMonth()+1}`;
+      if (!fixtureDates.has(dm)) {
+        byes.push({ type: 'bye', date: dm, auto: true });
+      }
+    }
+    cur.setDate(cur.getDate() + 7);
+  }
+  return byes;
+}
+
 function parsePlayHQ(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const results = [];
@@ -685,18 +717,29 @@ function buildRoundList() {
   state.rounds.forEach((f, i) => {
     if (f.type !== 'fixture') return;
     const sel = state.selected.has(i);
+    const isBye = f.type === 'bye';
     const item = document.createElement('label');
     item.className = 'round-item' + (sel ? ' selected' : '');
     item.htmlFor = `cb${i}`;
-    item.innerHTML = `
-      <input type="checkbox" id="cb${i}" ${sel?'checked':''}>
-      <div class="round-meta">
-        <span class="round-num">${(f.round||'').toUpperCase()}</span>
-        <span class="round-date">${f.date}</span>
-        <span class="round-time">${f.time}</span>
-        <span class="round-opp">${shortName(f.opponent)}</span>
-        <span class="round-venue-tag">${f.isHome?'🏠':'✈'} ${f.isHome?'Home':'Away'}</span>
-      </div>`;
+    if (isBye) {
+      item.innerHTML = `
+        <input type="checkbox" id="cb${i}" ${sel?'checked':''}>
+        <div class="round-meta" style="grid-template-columns:1fr">
+          <span style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase">
+            ${f.auto ? '⚡ Auto-detected' : '📅 Manual'} bye week — ${f.date}
+          </span>
+        </div>`;
+    } else {
+      item.innerHTML = `
+        <input type="checkbox" id="cb${i}" ${sel?'checked':''}>
+        <div class="round-meta">
+          <span class="round-num">${(f.round||'').toUpperCase()}</span>
+          <span class="round-date">${f.date}</span>
+          <span class="round-time">${f.time}</span>
+          <span class="round-opp">${shortName(f.opponent)}</span>
+          <span class="round-venue-tag">${f.isHome?'🏠':'✈'} ${f.isHome?'Home':'Away'}</span>
+        </div>`;
+    }
     item.querySelector('input').addEventListener('change', e => {
       e.target.checked ? state.selected.add(i) : state.selected.delete(i);
       item.classList.toggle('selected', e.target.checked);
@@ -714,23 +757,6 @@ function updateGenerateButton() {
 }
 
 // ── Bye list UI ──────────────────────────────────────────────
-function buildByeList() {
-  const list = document.getElementById('bye-list');
-  list.innerHTML = '';
-  state.byes.forEach((b, i) => {
-    const row = document.createElement('div');
-    row.className = 'bye-row';
-    row.innerHTML = `
-      <input type="text" value="${b}" placeholder="e.g. 7/6" style="max-width:110px">
-      <button class="btn-icon" title="Remove">×</button>`;
-    row.querySelector('input').addEventListener('input', e => { state.byes[i] = e.target.value; });
-    row.querySelector('button').addEventListener('click', () => {
-      state.byes.splice(i, 1);
-      buildByeList();
-    });
-    list.appendChild(row);
-  });
-}
 
 // ═══════════════════════════════════════════════════════════
 //  CARD RENDERER (Canvas 2D)
@@ -754,12 +780,8 @@ async function renderCard() {
   const hasFinals = document.getElementById('has-finals').checked;
 
   const fixtures = state.rounds.filter((_,i) => state.selected.has(i));
-  const byes = state.byes.filter(b => b.trim()).map(b => ({type:'bye', date:b.trim()}));
-  function parseDateKey(d) {
-    const p = (d||'').split('/');
-    return p.length===2 ? parseInt(p[1])*100+parseInt(p[0]) : 9999;
-  }
-  const allRows = [...fixtures, ...byes].sort((a,b) => parseDateKey(a.date)-parseDateKey(b.date));
+  // allRows = selected items from state.rounds (already sorted at parse time)
+  const allRows = state.rounds.filter((_,i) => state.selected.has(i));
 
   await Promise.all(fixtures.map(f => getCrest(f.opponent)));
 
@@ -769,7 +791,7 @@ async function renderCard() {
   const HEADER_H = 96;
   const ROW_H = 50, ROW_GAP = 4;
   const BYE_H = 28;
-  const FINALS_H = hasFinals ? 70 : 0;
+  const FINALS_H = hasFinals ? 60 : 0;
   const BETWEEN = 12; // gap between header and rows
 
   // Calculate total height
@@ -938,27 +960,24 @@ async function renderCard() {
 
   for (const row of allRows) {
     if (row.type === 'bye') {
-      // Single subtle divider line with BYE text
+      // Bye row — thin line + centred text, fully transparent background
       const midY = ry + BYE_H/2;
       ctx.save();
-      ctx.strokeStyle = addAlpha(ac, 0.22);
+      // Faint horizontal rule
+      ctx.strokeStyle = addAlpha(ac, 0.2);
       ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
       ctx.beginPath();
-      ctx.moveTo(rx, midY); ctx.lineTo(CARD_W - PAD_X, midY);
+      ctx.moveTo(rx + 40, midY); ctx.lineTo(CARD_W - PAD_X - 40, midY);
       ctx.stroke();
-      // BYE label centred on the line
-      ctx.font = `700 9px 'Barlow Condensed', Arial`;
-      ctx.letterSpacing = '3px';
-      ctx.fillStyle = addAlpha(ac, 0.55);
+      ctx.setLineDash([]);
+      // Text only — no background fill
+      ctx.font = `700 10px 'Barlow Condensed', 'Arial Narrow', Arial`;
+      ctx.letterSpacing = '2px';
+      ctx.fillStyle = addAlpha(ac, 0.5);
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
-      const label = `BYE WEEK`;
-      const lw = ctx.measureText(label).width + 16;
-      // White-out behind text
-      ctx.fillStyle = cg[0];
-      ctx.fillRect(CARD_W/2 - lw/2, midY - 7, lw, 14);
-      ctx.fillStyle = addAlpha(ac, 0.55);
-      ctx.fillText(label, CARD_W/2, midY);
+      ctx.fillText('BYE WEEK', CARD_W/2, midY);
       ctx.restore();
       ry += BYE_H + ROW_GAP;
       continue;
@@ -987,30 +1006,32 @@ async function renderCard() {
     ctx.fillText(f.round.toUpperCase(), 0, 0);
     ctx.restore();
 
-    // Date badge - matches reference: border-radius:50px, flex column, centred
-    const dbPad = 2;
+    // Date badge — fully rounded capsule (border-radius:50px in reference)
+    const dbPad = 3;
     const dbX = xDate + dbPad, dbY = ry + dbPad;
     const dbW = COL_DATE - dbPad*2, dbH = ROW_H - dbPad*2;
-    roundRect(ctx, dbX, dbY, dbW, dbH, 50);
-    ctx.fillStyle = dbBg; ctx.fill();
-    // Shadow
     ctx.save();
+    roundRect(ctx, dbX, dbY, dbW, dbH, 50);
+    ctx.fillStyle = dbBg;
     ctx.shadowColor = addAlpha(dbBg, 0.3);
     ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
-    roundRect(ctx, dbX, dbY, dbW, dbH, 50);
-    ctx.fillStyle = dbBg; ctx.fill();
+    ctx.fill();
     ctx.restore();
     const dbMX = dbX + dbW/2;
-    // Date: 0.88rem = 14px, weight 900
+    const dbMY = dbY + dbH/2;
+    // Date: 14px 900 — use 'middle' baseline, offset up by half line-height
     ctx.font = `900 14px 'Barlow Condensed', 'Arial Narrow', Arial`;
-    ctx.letterSpacing = '0.5px';
+    ctx.letterSpacing = '0.3px';
     ctx.fillStyle = dbTxt;
-    ctx.textBaseline = 'alphabetic';
+    ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    ctx.fillText(f.date, dbMX, ry + ROW_H/2 - 1);
-    // Time: 0.62rem = 10px, weight 800, line-height 1.15
+    ctx.fillText(f.date, dbMX, dbMY - 7);
+    // Time: 10px 800
     ctx.font = `800 10px 'Barlow Condensed', 'Arial Narrow', Arial`;
-    ctx.fillText(f.time, dbMX, ry + ROW_H/2 + 11);
+    ctx.fillStyle = dbTxt;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(f.time, dbMX, dbMY + 7);
+    ctx.globalAlpha = 1;
 
     // Pills
     const leftIsNorwood = f.isHome;
@@ -1018,9 +1039,10 @@ async function renderCard() {
     const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.norwood_crest;
     const leftName   = leftIsNorwood ? 'NORWOOD' : oppShort;
     const rightName  = leftIsNorwood ? oppShort  : 'NORWOOD';
-    // Venue: only show in opponent pill, and only when it's a known venue
-    const leftVenue  = leftIsNorwood ? ''        : f.venue;
-    const rightVenue = leftIsNorwood ? f.venue   : '';
+    // Venue: show in opponent pill ONLY when Norwood is away (opponent is hosting)
+    // Never show venue when Norwood is home (everyone knows Mullum Mullum)
+    const leftVenue  = leftIsNorwood ? '' : (f.isHome ? '' : f.venue);
+    const rightVenue = leftIsNorwood ? (f.isHome ? '' : f.venue) : '';
 
     // Left pill - crest on LEFT, text on RIGHT
     drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
@@ -1061,44 +1083,51 @@ async function renderCard() {
     ctx.fillStyle = lg; ctx.fillRect(PAD_X, ry, CARD_W-PAD_X*2, 1.5);
     ry += 12;
 
-    // Row 1: Week 1 | Week 2 (three columns, text centred in each third)
-    // .finals-item: flex:1 text-align:center, .finals-divider: padding 0 22px
-    // font inherited from card = Barlow Condensed, ~13px
-    ctx.font = `700 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    // Finals — date + label on same line, matching reference HTML
+    // Line 1: "9/8  Week 1 Finals  |  16/8  Week 2 Finals"
+    // Line 2: "23/8  Grand Final"
+    ctx.textBaseline = 'middle';
     ctx.letterSpacing = '0.5px';
-    ctx.textBaseline = 'top';
-    const innerW = CARD_W - PAD_X*2;
-    const thirdW = innerW / 3;
-    // Week 1
+    const finMid1 = CARD_W / 4;
+    const finMid2 = CARD_W * 3 / 4;
+
+    function drawFinalsItem(cx, dateStr, label, y) {
+      // Measure date to position label after it
+      ctx.font = `900 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+      const dw = ctx.measureText(dateStr + '  ').width;
+      const totalW = dw + ctx.measureText(label).width;
+      const startX = cx - totalW/2;
+      ctx.fillStyle = ac;
+      ctx.textAlign = 'left';
+      ctx.fillText(dateStr + '  ', startX, y);
+      ctx.font = `700 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillText(label, startX + dw, y);
+    }
+
+    drawFinalsItem(finMid1, w1, 'Week 1 Finals', ry + 8);
+    // Divider
+    ctx.font = `300 16px Arial`;
+    ctx.fillStyle = addAlpha(ac, 0.45);
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText('Week 1 Finals', PAD_X + thirdW/2, ry);
-    // Date in accent colour
+    ctx.fillText('|', CARD_W/2, ry + 8);
+    drawFinalsItem(finMid2, w2, 'Week 2 Finals', ry + 8);
+
+    ry += 24;
+    // Grand Final — same pattern, centred
+    ctx.font = `900 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    const gfw = ctx.measureText(gf + '  ').width;
+    const gfLabel = 'Grand Final';
+    ctx.font = `700 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    const gflw = ctx.measureText(gfLabel).width;
+    const gfStart = CARD_W/2 - (gfw + gflw)/2;
     ctx.font = `900 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
     ctx.fillStyle = ac;
-    ctx.fillText(w1, PAD_X + thirdW/2, ry - 14);
-    // Divider
-    ctx.font = `300 18px 'Barlow', Arial`;
-    ctx.fillStyle = addAlpha(ac, 0.45);
-    ctx.fillText('|', PAD_X + thirdW + thirdW/2, ry - 4);
-    // Week 2
+    ctx.textAlign = 'left';
+    ctx.fillText(gf + '  ', gfStart, ry + 8);
     ctx.font = `700 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText('Week 2 Finals', PAD_X + thirdW*2 + thirdW/2, ry);
-    ctx.font = `900 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
-    ctx.fillStyle = ac;
-    ctx.fillText(w2, PAD_X + thirdW*2 + thirdW/2, ry - 14);
-
-    ry += 22;
-    // Grand Final row - centred, uppercase, 0.85rem/800
-    ctx.font = `800 14px 'Barlow Condensed', 'Arial Narrow', Arial`;
-    ctx.letterSpacing = '0.8px';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.fillText('GRAND FINAL', CARD_W/2, ry);
-    ctx.font = `900 14px 'Barlow Condensed', 'Arial Narrow', Arial`;
-    ctx.fillStyle = ac;
-    ctx.fillText(gf, CARD_W/2, ry - 14);
+    ctx.fillText(gfLabel, gfStart + gfw, ry + 8);
   }
 
   document.getElementById('card-canvas-wrap').style.display = 'block';
@@ -1220,9 +1249,28 @@ document.getElementById('file-input').addEventListener('change', async e => {
     document.getElementById('round-section').style.display = 'none';
     return;
   }
-  state.rounds = results;
-  state.selected = new Set(results.map((_,i)=>i));
-  fb.innerHTML = `<div class="alert alert-success">${results.length} round${results.length!==1?'s':''} imported from ${file.name}</div>`;
+
+  // Auto-detect bye weeks from gap weeks in the schedule
+  const autoByes = detectByeWeeks(results);
+
+  // Combine: fixtures first (selected by default), then auto-detected byes (selected by default)
+  // User can deselect any of them
+  const allItems = [
+    ...results.map(r => ({...r, auto: false})),
+    ...autoByes.map(b => ({...b, auto: true}))
+  ];
+  // Sort everything by date
+  function parseDK(d) {
+    const p = (d||'').split('/');
+    return p.length===2 ? parseInt(p[1])*100+parseInt(p[0]) : 9999;
+  }
+  allItems.sort((a,b) => parseDK(a.date)-parseDK(b.date));
+
+  state.rounds = allItems;
+  state.selected = new Set(allItems.map((_,i)=>i));
+  const byeCount = autoByes.length;
+  const byeNote = byeCount > 0 ? ` · ${byeCount} bye week${byeCount>1?'s':''} detected` : '';
+  fb.innerHTML = `<div class="alert alert-success">${results.length} round${results.length!==1?'s':''} imported${byeNote}</div>`;
   document.getElementById('round-section').style.display = 'block';
   buildRoundList();
   updateGenerateButton();
@@ -1240,8 +1288,12 @@ document.getElementById('btn-deselect-all').addEventListener('click', () => {
 
 // Add bye
 document.getElementById('btn-add-bye').addEventListener('click', () => {
-  state.byes.push('');
-  buildByeList();
+  // Add a manual bye as a round item (with empty date, user edits inline)
+  state.rounds.push({ type: 'bye', date: '', auto: false });
+  const i = state.rounds.length - 1;
+  state.selected.add(i);
+  buildRoundList();
+  updateGenerateButton();
 });
 
 // Finals toggle
