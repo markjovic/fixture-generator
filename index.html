@@ -6,13 +6,13 @@
 <title>Fixture Card Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&display=block" rel="stylesheet">
+<link id="bc-font" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=block" rel="stylesheet">
 <script>
 window.__fontsLoaded = new Promise(resolve => {
-  // Poll until Barlow Condensed is available in document.fonts
+  // Poll until Outfit is available in document.fonts
   const check = () => {
     // Use both quote styles to be safe across browsers
-    const loaded = document.fonts.check('900 16px "Barlow Condensed"');
+    const loaded = document.fonts.check('700 16px "Outfit"');
     if (loaded) {
       resolve();
     } else {
@@ -50,7 +50,7 @@ window.__fontsLoaded = new Promise(resolve => {
   --radius: 10px;
   --radius-lg: 16px;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-card: 'Barlow Condensed', Arial, sans-serif;
+  --font-card: 'Outfit', sans-serif;
 }
 
 html, body {
@@ -387,24 +387,32 @@ html, body {
 <body>
 <!-- Force fonts to load by rendering in DOM -->
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
-  font-family:'Barlow Condensed',Arial;font-weight:400;font-size:16px">NORWOOD</div>
+  font-family:"Outfit",sans-serif;font-weight:400;font-size:16px">NORWOOD</div>
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
-  font-family:'Barlow Condensed',Arial;font-weight:900;font-size:16px">NORWOOD</div>
+  font-family:"Outfit",sans-serif;font-weight:900;font-size:16px">NORWOOD</div>
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
-  font-family:'Barlow Condensed',Arial;font-weight:800;font-size:16px">NORWOOD</div>
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:16px">NORWOOD</div>
 <div aria-hidden="true" style="position:absolute;visibility:hidden;pointer-events:none;top:-9999px;
-  font-family:'Barlow Condensed',Arial;font-weight:700;font-size:16px">NORWOOD</div>
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:16px">NORWOOD</div>
 
 <div class="app">
 
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.6</span>
+    <span class="badge">Beta 0.7</span>
   </header>
 
   <!-- Left panel -->
   <aside class="panel">
+    <!-- Generate / Export bar at top -->
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;">
+      <button class="btn-generate" id="btn-generate" disabled>Generate Card</button>
+      <div class="export-row">
+        <button class="btn-export" id="btn-png" disabled>⬇ PNG</button>
+        <button class="btn-export" id="btn-print" disabled>🖨 Print</button>
+      </div>
+    </div>
     <nav class="panel-tabs">
       <button class="tab-btn active" data-tab="fixtures">Fixtures</button>
       <button class="tab-btn" data-tab="team">Team</button>
@@ -493,14 +501,7 @@ html, body {
       </div>
     </div>
 
-    <!-- Generate / Export (always visible) -->
-    <div style="padding:16px 20px 24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;margin-top:auto">
-      <button class="btn-generate" id="btn-generate" disabled>Generate Card</button>
-      <div class="export-row">
-        <button class="btn-export" id="btn-png" disabled>⬇ PNG</button>
-        <button class="btn-export" id="btn-print" disabled>🖨 Print</button>
-      </div>
-    </div>
+
   </aside>
 
   <!-- Preview -->
@@ -806,11 +807,11 @@ async function renderCard() {
   // Debug: check what font canvas actually resolves
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
-  testCtx.font = '800 16px "Barlow Condensed"';
-  console.log('[v0.6] Canvas font resolved to:', testCtx.font);
-  console.log('[v0.6] BC 900 check:', document.fonts.check('900 16px "Barlow Condensed"'));
-  console.log('[v0.6] fonts.check 900:', document.fonts.check('900 16px "Barlow Condensed"'));
-  console.log('[v0.6] fonts.check 800:', document.fonts.check('800 16px "Barlow Condensed"'));
+  testCtx.font = '800 16px "Outfit"';
+  console.log('[v0.7] Canvas font:', testCtx.font);
+  console.log('[v0.7] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.7] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.7] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -964,8 +965,8 @@ async function renderCard() {
     hx += bw + 14;
   }
 
-  const nameSize = teamName.length > 16 ? 46 : teamName.length > 12 ? 52 : 58;
-  ctx.font = `600 ${nameSize}px "Barlow Condensed",Arial`;
+  const nameSize = teamName.length > 16 ? 40 : teamName.length > 12 ? 46 : 52;
+  ctx.font = `700 ${nameSize}px "Outfit",sans-serif`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
   // Simulate -webkit-text-stroke + text-shadow from reference
@@ -987,12 +988,12 @@ async function renderCard() {
   ctx.fillStyle = '#ffffff';
   ctx.fillText(teamName, hx, hy + 2);
 
-  ctx.font = `600 17px "Barlow Condensed",Arial`;
+  ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
   if (sublabel) {
-    ctx.font = `600 12px "Barlow Condensed",Arial`;
+    ctx.font = `400 12px "Outfit",sans-serif`;
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.fillText(sublabel.toUpperCase(), hx, hy + nameSize + 22);
   }
@@ -1028,7 +1029,7 @@ async function renderCard() {
       const bmidY   = ry + BYE_H/2;
       ctx.save();
       // Measure text first
-      ctx.font = `400 10px "Barlow Condensed",Arial`;
+      ctx.font = `400 10px "Outfit",sans-serif`;
       const btw = ctx.measureText('BYE WEEK').width + 20; // +padding
       const lineW = (bxEnd - bxStart - btw) / 2;
       // Left gradient line
@@ -1049,7 +1050,7 @@ async function renderCard() {
       ctx.fillStyle = lg2;
       ctx.fillRect(bxEnd - lineW, bmidY - 0.75, lineW, 1.5);
       // Text — no background, drawn directly on card
-      ctx.font = `400 10px "Barlow Condensed",Arial`;
+      ctx.font = `400 10px "Outfit",sans-serif`;
       ctx.fillStyle = ac;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
@@ -1073,7 +1074,7 @@ async function renderCard() {
 
     // Round label (vertical)
     ctx.save();
-    ctx.font = `600 15px "Barlow Condensed",Arial`;
+    ctx.font = `500 15px "Outfit",sans-serif`;
     ctx.fillStyle = rlCol;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
@@ -1096,13 +1097,13 @@ async function renderCard() {
     const dbMX = dbX + dbW/2;
     const dbMY = dbY + dbH/2;
     // Date: 14px 900 — use 'middle' baseline, offset up by half line-height
-    ctx.font = `400 17px "Barlow Condensed",Arial`;
+    ctx.font = `500 16px "Outfit",sans-serif`;
     ctx.fillStyle = dbTxt;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(f.date, dbMX, dbMY - 7);
     // Time: 10px 800
-    ctx.font = `400 10px "Barlow Condensed",Arial`;
+    ctx.font = `400 11px "Outfit",sans-serif`;
     ctx.fillStyle = dbTxt;
     ctx.globalAlpha = 0.85;
     ctx.fillText(f.time, dbMX, dbMY + 7);
@@ -1139,7 +1140,7 @@ async function renderCard() {
     ctx.fill();
     ctx.restore();
     ctx.save();
-    ctx.font = `600 13px "Barlow Condensed",Arial`;
+    ctx.font = `500 12px "Outfit",sans-serif`;
     ctx.fillStyle = vsCol;
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     ctx.fillText('VS', vsCX, vsCY + 0.5);
@@ -1171,16 +1172,16 @@ async function renderCard() {
 
     // Helper: draw "DATE  Label" centred at cx — date in accent, label in white
     const drawFItem = (cx, dateStr, label, y) => {
-      ctx.font = `400 15px "Barlow Condensed",Arial`;
+      ctx.font = `400 14px "Outfit",sans-serif`;
       const dw = ctx.measureText(dateStr + '  ').width;
-      ctx.font = `400 15px "Barlow Condensed",Arial`;
+      ctx.font = `400 14px "Outfit",sans-serif`;
       const lw = ctx.measureText(label).width;
       const sx = cx - (dw + lw) / 2;
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.font = `600 15px "Barlow Condensed",Arial`;
+      ctx.font = `500 15px "Outfit",sans-serif`;
       ctx.fillStyle = ac;
       ctx.fillText(dateStr + '  ', sx, y);
-      ctx.font = `400 15px "Barlow Condensed",Arial`;
+      ctx.font = `400 14px "Outfit",sans-serif`;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillText(label, sx + dw, y);
     };
@@ -1258,14 +1259,14 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.rect(textAreaX, y, textAreaW, h);
   ctx.clip();
   // Name: 700 weight (900 renders too heavy on canvas vs browser)
-  ctx.font = `600 18px "Barlow Condensed",Arial`;
+  ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = textAlign;
   const nameY = venue ? y + h/2 - 7 : y + h/2;
   ctx.fillText(name, textDrawX, nameY);
   if (venue) {
-    ctx.font = `400 9px "Barlow Condensed",Arial`;
+    ctx.font = `400 9px "Outfit",sans-serif`;
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
     ctx.fillText(venue, textDrawX, y + h/2 + 7);
   }
@@ -1336,6 +1337,18 @@ document.getElementById('file-input').addEventListener('change', async e => {
 
   state.rounds = allItems;
   state.selected = new Set(allItems.map((_,i)=>i));
+  // Deselect rounds with dates in the past
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  allItems.forEach((item, i) => {
+    if (item.type === 'fixture' && item.date) {
+      const parts = item.date.split('/');
+      if (parts.length === 2) {
+        const itemDate = new Date(today.getFullYear(), parseInt(parts[1])-1, parseInt(parts[0]));
+        if (itemDate < today) state.selected.delete(i);
+      }
+    }
+  });
   const byeCount = autoByes.length;
   const byeNote = byeCount > 0 ? ` · ${byeCount} bye week${byeCount>1?'s':''} detected` : '';
   fb.innerHTML = `<div class="alert alert-success">${results.length} round${results.length!==1?'s':''} imported${byeNote}</div>`;
