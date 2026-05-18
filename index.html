@@ -789,7 +789,7 @@ async function renderCard() {
   const HEADER_H = 96;
   const ROW_H = 50, ROW_GAP = 4;
   const BYE_H = 28;
-  const FINALS_H = hasFinals ? 60 : 0;
+  const FINALS_H = hasFinals ? 72 : 0;
   const BETWEEN = 12; // gap between header and rows
 
   // Calculate total height
@@ -1105,7 +1105,6 @@ async function renderCard() {
 
   // ── Finals ──
   if (hasFinals) {
-    ry += 8;
     const w1 = document.getElementById('finals-w1').value;
     const w2 = document.getElementById('finals-w2').value;
     const gf = document.getElementById('finals-gf').value;
@@ -1118,51 +1117,62 @@ async function renderCard() {
     ctx.fillStyle = lg; ctx.fillRect(PAD_X, ry, CARD_W-PAD_X*2, 1.5);
     ry += 12;
 
-    // Finals — date + label on same line, matching reference HTML
-    // Line 1: "9/8  Week 1 Finals  |  16/8  Week 2 Finals"
-    // Line 2: "23/8  Grand Final"
+    // Finals — spans pills section only (col 3-5), matching reference
+    // Gold line
+    const fxStart = xLP;  // start of left pill
+    const fxEnd   = CARD_W - PAD_X;  // end of right pill
+    const fxMid   = fxStart + (fxEnd - fxStart)/2;
+    ry += 8;
+    // Gold gradient line
+    const flineGrad = ctx.createLinearGradient(fxStart, 0, fxEnd, 0);
+    flineGrad.addColorStop(0, 'transparent');
+    flineGrad.addColorStop(0.2, ac);
+    flineGrad.addColorStop(0.8, ac);
+    flineGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = flineGrad;
+    ctx.fillRect(fxStart, ry, fxEnd - fxStart, 1.5);
+    ry += 10;
+
+    // Row 1: Week1 | Week2
     ctx.textBaseline = 'middle';
     ctx.letterSpacing = '0.5px';
-    const finMid1 = CARD_W / 4;
-    const finMid2 = CARD_W * 3 / 4;
-
-    function drawFinalsItem(cx, dateStr, label, y) {
-      // Measure date to position label after it
-      ctx.font = `900 13px "Barlow Condensed",Arial`;
-      const dw = ctx.measureText(dateStr + '  ').width;
-      const totalW = dw + ctx.measureText(label).width;
-      const startX = cx - totalW/2;
-      ctx.fillStyle = ac;
-      ctx.textAlign = 'left';
-      ctx.fillText(dateStr + '  ', startX, y);
-      ctx.font = `700 13px "Barlow Condensed",Arial`;
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText(label, startX + dw, y);
-    }
-
-    drawFinalsItem(finMid1, w1, 'Week 1 Finals', ry + 8);
-    // Divider
-    ctx.font = `300 16px Arial`;
-    ctx.fillStyle = addAlpha(ac, 0.45);
-    ctx.textAlign = 'center';
-    ctx.fillText('|', CARD_W/2, ry + 8);
-    drawFinalsItem(finMid2, w2, 'Week 2 Finals', ry + 8);
-
-    ry += 24;
-    // Grand Final — same pattern, centred
+    const fRow1Y = ry + 7;
+    // Week 1 — centred in left half
+    const f1cx = fxStart + (fxMid - fxStart)/2;
     ctx.font = `900 13px "Barlow Condensed",Arial`;
-    const gfw = ctx.measureText(gf + '  ').width;
-    const gfLabel = 'Grand Final';
-    ctx.font = `700 13px "Barlow Condensed",Arial`;
-    const gflw = ctx.measureText(gfLabel).width;
-    const gfStart = CARD_W/2 - (gfw + gflw)/2;
-    ctx.font = `900 13px "Barlow Condensed",Arial`;
-    ctx.fillStyle = ac;
-    ctx.textAlign = 'left';
-    ctx.fillText(gf + '  ', gfStart, ry + 8);
+    ctx.fillStyle = ac; ctx.textAlign = 'center';
+    ctx.fillText(w1, f1cx - ctx.measureText(w1 + '  Week 1 Finals').width/2 + ctx.measureText(w1).width/2, fRow1Y);
     ctx.font = `700 13px "Barlow Condensed",Arial`;
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText(gfLabel, gfStart + gfw, ry + 8);
+    const w1dateW = (() => { ctx.font = `900 13px "Barlow Condensed",Arial`; const dw = ctx.measureText(w1).width; ctx.font = `700 13px "Barlow Condensed",Arial`; return dw; })();
+    // Draw as inline: date+space+label, centred together
+    function drawFItem(cx, dateStr, label, y) {
+      ctx.font = `900 13px "Barlow Condensed",Arial`;
+      const dw = ctx.measureText(dateStr).width;
+      ctx.font = `700 13px "Barlow Condensed",Arial`;
+      const lw = ctx.measureText(' ' + label).width;
+      const totalW = dw + lw;
+      const sx = cx - totalW/2;
+      ctx.font = `900 13px "Barlow Condensed",Arial`;
+      ctx.fillStyle = ac; ctx.textAlign = 'left';
+      ctx.fillText(dateStr, sx, y);
+      ctx.font = `700 13px "Barlow Condensed",Arial`;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillText(' ' + label, sx + dw, y);
+    }
+    drawFItem(f1cx, w1, 'Week 1 Finals', fRow1Y);
+    // Divider |
+    ctx.font = `300 16px Arial`;
+    ctx.fillStyle = 'rgba(245,200,0,0.45)';
+    ctx.textAlign = 'center';
+    ctx.fillText('|', fxMid, fRow1Y);
+    // Week 2 — centred in right half
+    const f2cx = fxMid + (fxEnd - fxMid)/2;
+    drawFItem(f2cx, w2, 'Week 2 Finals', fRow1Y);
+
+    ry += 20;
+    // Row 2: Grand Final centred across full width
+    drawFItem(fxStart + (fxEnd - fxStart)/2, gf, 'Grand Final', ry + 7);
   }
 
   document.getElementById('card-canvas-wrap').style.display = 'block';
@@ -1177,69 +1187,68 @@ async function renderCard() {
 // crestSide: 'left' = crest on left, text on right (pill-left)
 //            'right' = text on left, crest on right (pill-right)
 function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide, txtColor, bgFallback) {
-  // Background gradient
+  // Background
   const g = ctx.createLinearGradient(x, y, x+w, y);
   g.addColorStop(0, gradColors[0]||'#333');
   g.addColorStop(1, gradColors[1]||gradColors[0]);
-  // border-radius: 8px (rectangular, not pill)
   roundRect(ctx, x, y+1, w, h-2, 8);
   ctx.fillStyle = g; ctx.fill();
 
-  const CREST_D = 30;  // reference: 34px but slightly smaller looks better
+  const CREST_D = 30;
   const CREST_R = CREST_D/2;
   const crestPad = 8;
 
+  // crestSide='left': crest on left, text right-aligned to fill remaining space
+  // crestSide='right': crest on right, text left-aligned to fill remaining space
   const crestX = crestSide === 'left' ? x + crestPad : x + w - crestPad - CREST_D;
   const crestY = y + (h - CREST_D)/2;
-  const textX  = crestSide === 'left' ? crestX + CREST_D + 6 : x + 6;
-  const textW  = w - CREST_D - crestPad*2 - 6;
 
-  // Crest circle with white border (reference: border:2px solid rgba(255,255,255,0.85))
+  // Text area
+  const textPad = 6;
+  const textAreaX = crestSide === 'left'  ? crestX + CREST_D + textPad : x + textPad;
+  const textAreaW = w - CREST_D - crestPad - textPad*2;
+  const textAlign = crestSide === 'left' ? 'right' : 'left';
+  const textDrawX = crestSide === 'left' ? textAreaX + textAreaW : textAreaX;
+
+  // Crest circle with white border
   ctx.save();
   ctx.beginPath();
   ctx.arc(crestX + CREST_R, crestY + CREST_R, CREST_R + 2, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
   ctx.beginPath();
   ctx.arc(crestX + CREST_R, crestY + CREST_R, CREST_R, 0, Math.PI*2);
-  ctx.fillStyle = bgFallback || '#2a1060';
-  ctx.fill();
+  ctx.fillStyle = bgFallback || '#2a1060'; ctx.fill();
   ctx.clip();
   if (crestImg) {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    // object-fit:cover - fill the circle
     const s = CREST_D * 1.05;
     ctx.drawImage(crestImg, crestX - (s-CREST_D)/2, crestY - (s-CREST_D)/2, s, s);
   }
   ctx.restore();
 
-  // Text (clipped to available width)
+  // Text clipped to text area
   ctx.save();
   ctx.beginPath();
-  ctx.rect(textX, y, textW, h);
+  ctx.rect(textAreaX, y, textAreaW, h);
   ctx.clip();
-
-  const textMidX = crestSide === 'left' ? textX : x + w - crestPad - CREST_D - 6;
-  const align = crestSide === 'left' ? 'left' : 'left';
-
-  ctx.font = `800 15px "Barlow Condensed",Arial`;
+  // Name: 700 weight (900 renders too heavy on canvas vs browser)
+  ctx.font = `700 13px "Barlow Condensed",Arial`;
   ctx.letterSpacing = '0.5px';
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-
+  ctx.textAlign = textAlign;
   const nameY = venue ? y + h/2 - 7 : y + h/2;
-  ctx.fillText(name, textX, nameY);
-
+  ctx.fillText(name, textDrawX, nameY);
   if (venue) {
     ctx.font = `600 9px "Barlow Condensed",Arial`;
     ctx.letterSpacing = '0.2px';
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
-    ctx.fillText(venue, textX, y + h/2 + 8);
+    ctx.fillText(venue, textDrawX, y + h/2 + 7);
   }
   ctx.restore();
 }
+
 
 
 // ── Helpers ──────────────────────────────────────────────────
