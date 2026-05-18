@@ -771,7 +771,10 @@ const FOOTER_H = 80; // finals block
 const PAD_X = 24, PAD_Y = 24;
 
 async function renderCard() {
+  console.log('renderCard called, scheme:', state.scheme, 'rows:', state.rounds.length, 'selected:', state.selected.size);
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
+  if (!scheme) { throw new Error('No colour scheme found for: ' + state.scheme); }
+  console.log('scheme loaded:', scheme.name, 'cg:', scheme.card_gradient);
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
   const clubName = state.config.club_name || 'Club Name';
@@ -906,6 +909,7 @@ async function renderCard() {
   ctx.restore(); // end watermark clip
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
+  console.log('Watermarks drawn, starting header');
 
   // ── Header ──
   let hx = PAD_X, hy = PAD_TOP;
@@ -970,6 +974,7 @@ async function renderCard() {
   let ry = PAD_TOP + HEADER_H + BETWEEN;
   const rx = PAD_X;
 
+  console.log('Drawing rows:', allRows.length);
   for (const row of allRows) {
     if (row.type === 'bye') {
             // Bye row — gradient line with BYE WEEK label
@@ -1325,13 +1330,18 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   const btn = document.getElementById('btn-generate');
   btn.textContent = 'Rendering…';
   btn.disabled = true;
-  await document.fonts.ready;
-  // Warm up Barlow Condensed so canvas picks it up
-  const warmup = document.createElement('canvas');
-  const wctx = warmup.getContext('2d');
-  wctx.font = "900 14px 'Barlow Condensed'";
-  wctx.fillText('X', 0, 0);
-  await renderCard();
+  try {
+    await document.fonts.ready;
+    const warmup = document.createElement('canvas');
+    const wctx = warmup.getContext('2d');
+    wctx.font = "900 14px 'Barlow Condensed'";
+    wctx.fillText('X', 0, 0);
+    await renderCard();
+  } catch(err) {
+    console.error('renderCard error:', err);
+    const fb = document.getElementById('parse-feedback');
+    fb.innerHTML = '<div class="alert alert-error">Render error: ' + err.message + '</div>';
+  }
   btn.textContent = 'Generate Card';
   btn.disabled = false;
 });
