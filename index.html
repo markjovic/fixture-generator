@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fixture Card Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@600;700&display=swap" rel="stylesheet">
 <style>
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -768,7 +769,7 @@ async function renderCard() {
   const HEADER_H = 96;
   const ROW_H = 50, ROW_GAP = 4;
   const BYE_H = 28;
-  const FINALS_H = hasFinals ? 56 : 0;
+  const FINALS_H = hasFinals ? 70 : 0;
   const BETWEEN = 12; // gap between header and rows
 
   // Calculate total height
@@ -951,7 +952,7 @@ async function renderCard() {
       ctx.fillStyle = addAlpha(ac, 0.55);
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
-      const label = `BYE  ${row.date}`;
+      const label = `BYE WEEK`;
       const lw = ctx.measureText(label).width + 16;
       // White-out behind text
       ctx.fillStyle = cg[0];
@@ -986,21 +987,30 @@ async function renderCard() {
     ctx.fillText(f.round.toUpperCase(), 0, 0);
     ctx.restore();
 
-    // Date badge - fully rounded, centred in its column
-    const dbX = xDate + 1, dbY = ry + 1, dbW = COL_DATE - 2, dbH = ROW_H - 2;
+    // Date badge - matches reference: border-radius:50px, flex column, centred
+    const dbPad = 2;
+    const dbX = xDate + dbPad, dbY = ry + dbPad;
+    const dbW = COL_DATE - dbPad*2, dbH = ROW_H - dbPad*2;
     roundRect(ctx, dbX, dbY, dbW, dbH, 50);
     ctx.fillStyle = dbBg; ctx.fill();
-    // Date text
-    ctx.font = `900 14px 'Barlow Condensed', Arial`;
+    // Shadow
+    ctx.save();
+    ctx.shadowColor = addAlpha(dbBg, 0.3);
+    ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+    roundRect(ctx, dbX, dbY, dbW, dbH, 50);
+    ctx.fillStyle = dbBg; ctx.fill();
+    ctx.restore();
+    const dbMX = dbX + dbW/2;
+    // Date: 0.88rem = 14px, weight 900
+    ctx.font = `900 14px 'Barlow Condensed', 'Arial Narrow', Arial`;
     ctx.letterSpacing = '0.5px';
     ctx.fillStyle = dbTxt;
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'center';
-    const dbMX = dbX + dbW/2;
-    ctx.fillText(f.date, dbMX, ry + ROW_H/2 - 8);
-    // Time text
-    ctx.font = `800 10px 'Barlow Condensed', Arial`;
-    ctx.fillText(f.time, dbMX, ry + ROW_H/2 + 8);
+    ctx.fillText(f.date, dbMX, ry + ROW_H/2 - 1);
+    // Time: 0.62rem = 10px, weight 800, line-height 1.15
+    ctx.font = `800 10px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    ctx.fillText(f.time, dbMX, ry + ROW_H/2 + 11);
 
     // Pills
     const leftIsNorwood = f.isHome;
@@ -1051,22 +1061,44 @@ async function renderCard() {
     ctx.fillStyle = lg; ctx.fillRect(PAD_X, ry, CARD_W-PAD_X*2, 1.5);
     ry += 12;
 
-    ctx.font = `700 13px 'Barlow Condensed', Arial`;
+    // Row 1: Week 1 | Week 2 (three columns, text centred in each third)
+    // .finals-item: flex:1 text-align:center, .finals-divider: padding 0 22px
+    // font inherited from card = Barlow Condensed, ~13px
+    ctx.font = `700 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
     ctx.letterSpacing = '0.5px';
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-    const col1W = (CARD_W - PAD_X*2)/2 - 10;
-    ctx.fillText(`${w1}  Week 1 Finals`, PAD_X, ry);
-    ctx.fillStyle = addAlpha(ac, 0.4);
-    ctx.fillText('|', CARD_W/2, ry);
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillText(`${w2}  Week 2 Finals`, CARD_W/2 + 12, ry);
-
-    ry += 20;
-    ctx.font = `900 16px 'Barlow Condensed', Arial`;
-    ctx.fillStyle = ac;
+    ctx.textBaseline = 'top';
+    const innerW = CARD_W - PAD_X*2;
+    const thirdW = innerW / 3;
+    // Week 1
     ctx.textAlign = 'center';
-    ctx.fillText(`${gf}  Grand Final`, CARD_W/2, ry);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText('Week 1 Finals', PAD_X + thirdW/2, ry);
+    // Date in accent colour
+    ctx.font = `900 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    ctx.fillStyle = ac;
+    ctx.fillText(w1, PAD_X + thirdW/2, ry - 14);
+    // Divider
+    ctx.font = `300 18px 'Barlow', Arial`;
+    ctx.fillStyle = addAlpha(ac, 0.45);
+    ctx.fillText('|', PAD_X + thirdW + thirdW/2, ry - 4);
+    // Week 2
+    ctx.font = `700 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText('Week 2 Finals', PAD_X + thirdW*2 + thirdW/2, ry);
+    ctx.font = `900 13px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    ctx.fillStyle = ac;
+    ctx.fillText(w2, PAD_X + thirdW*2 + thirdW/2, ry - 14);
+
+    ry += 22;
+    // Grand Final row - centred, uppercase, 0.85rem/800
+    ctx.font = `800 14px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    ctx.letterSpacing = '0.8px';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAND FINAL', CARD_W/2, ry);
+    ctx.font = `900 14px 'Barlow Condensed', 'Arial Narrow', Arial`;
+    ctx.fillStyle = ac;
+    ctx.fillText(gf, CARD_W/2, ry - 14);
   }
 
   document.getElementById('card-canvas-wrap').style.display = 'block';
@@ -1127,7 +1159,7 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   const textMidX = crestSide === 'left' ? textX : x + w - crestPad - CREST_D - 6;
   const align = crestSide === 'left' ? 'left' : 'left';
 
-  ctx.font = `800 14px 'Barlow Condensed', Arial`;
+  ctx.font = `800 15px 'Barlow Condensed', 'Arial Narrow', Arial`;
   ctx.letterSpacing = '0.5px';
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
@@ -1137,7 +1169,7 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.fillText(name, textX, nameY);
 
   if (venue) {
-    ctx.font = `600 9px 'Barlow Condensed', Arial`;
+    ctx.font = `600 9px 'Barlow Condensed', 'Arial Narrow', Arial`;
     ctx.letterSpacing = '0.2px';
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
     ctx.fillText(venue, textX, y + h/2 + 8);
@@ -1222,6 +1254,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   const btn = document.getElementById('btn-generate');
   btn.textContent = 'Rendering…';
   btn.disabled = true;
+  await document.fonts.ready;
   await renderCard();
   btn.textContent = 'Generate Card';
   btn.disabled = false;
