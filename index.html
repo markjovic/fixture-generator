@@ -398,7 +398,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta</span>
+    <span class="badge">Beta 0.1</span>
   </header>
 
   <!-- Left panel -->
@@ -801,6 +801,13 @@ const FOOTER_H = 80; // finals block
 const PAD_X = 24, PAD_Y = 24;
 
 async function renderCard() {
+  // Debug: check what font canvas actually resolves
+  const testC = document.createElement('canvas');
+  const testCtx = testC.getContext('2d');
+  testCtx.font = '900 16px "Barlow Condensed", Arial';
+  console.log('[v0.1] Canvas font resolved to:', testCtx.font);
+  console.log('[v0.1] fonts.check 900:', document.fonts.check('900 16px "Barlow Condensed"'));
+  console.log('[v0.1] fonts.check 800:', document.fonts.check('800 16px "Barlow Condensed"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
