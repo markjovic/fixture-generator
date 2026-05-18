@@ -419,8 +419,8 @@ html, body {
         <input type="text" id="team-name" value="U12 Purple 2026" placeholder="e.g. U12 Purple 2026">
       </div>
       <div class="field">
-        <label>Kit / division <span style="font-weight:400;text-transform:none;letter-spacing:0">(shown under club name, e.g. "Purple" or "EFNL U12")</span></label>
-        <input type="text" id="team-sublabel" value="Purple" placeholder="e.g. EFNL Under 12">
+        <label>League / division <span style="font-weight:400;text-transform:none;letter-spacing:0">(shown under club name)</span></label>
+        <input type="text" id="team-sublabel" value="Eastern Football Netball League" placeholder="e.g. EFNL Under 12">
       </div>
       <div class="alert alert-info" style="font-size:12px;line-height:1.5">
         <strong>Home venue</strong> and <strong>club name</strong> are set in <code>config.json</code>. The heading badge is <code>assets/badge.png</code>. Replace these files to update them.
@@ -746,31 +746,39 @@ const PAD_X = 24, PAD_Y = 24;
 
 async function renderCard() {
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
-  const teamName = document.getElementById('team-name').value.trim() || 'TEAM NAME';
+  const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
   const clubName = state.config.club_name || 'Club Name';
-  const homeVenue = state.config.home_venue || 'Home Venue';
+  const homeVenue = state.config.home_venue || '';
   const hasFinals = document.getElementById('has-finals').checked;
 
-  // Build fixture list
   const fixtures = state.rounds.filter((_,i) => state.selected.has(i));
   const byes = state.byes.filter(b => b.trim()).map(b => ({type:'bye', date:b.trim()}));
-  // Sort byes into fixture list by parsing date (d/m format)
-  function parseDateKey(dateStr) {
-    const parts = (dateStr||'').split('/');
-    return parts.length === 2 ? parseInt(parts[1])*100 + parseInt(parts[0]) : 9999;
+  function parseDateKey(d) {
+    const p = (d||'').split('/');
+    return p.length===2 ? parseInt(p[1])*100+parseInt(p[0]) : 9999;
   }
-  const allRows = [...fixtures, ...byes].sort((a,b) => parseDateKey(a.date) - parseDateKey(b.date));
+  const allRows = [...fixtures, ...byes].sort((a,b) => parseDateKey(a.date)-parseDateKey(b.date));
 
-  // Pre-load all crests needed
-  const crestPromises = fixtures.map(f => getCrest(f.opponent));
-  await Promise.all(crestPromises);
+  await Promise.all(fixtures.map(f => getCrest(f.opponent)));
 
-  // Calculate card height
-  const numRows = allRows.length;
-  const finalsH = hasFinals ? FOOTER_H : 0;
-  const CARD_H = PAD_Y + HEADER_H + 12 + numRows * (ROW_H + 5) + finalsH + PAD_Y + 20;
+  // Card dimensions - match reference exactly
+  const CARD_W = 560;
+  const PAD_X = 20, PAD_TOP = 24, PAD_BOT = 26;
+  const HEADER_H = 96;
+  const ROW_H = 50, ROW_GAP = 4;
+  const BYE_H = 28;
+  const FINALS_H = hasFinals ? 56 : 0;
+  const BETWEEN = 12; // gap between header and rows
 
+  // Calculate total height
+  let contentH = 0;
+  for (const row of allRows) {
+    contentH += (row.type === 'bye' ? BYE_H : ROW_H) + ROW_GAP;
+  }
+  const CARD_H = PAD_TOP + HEADER_H + BETWEEN + contentH + FINALS_H + PAD_BOT;
+
+  const SCALE = 2;
   const canvas = document.getElementById('card-canvas');
   canvas.width = CARD_W * SCALE;
   canvas.height = CARD_H * SCALE;
@@ -780,49 +788,50 @@ async function renderCard() {
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
-  // ── Background gradient ──
-  const grad = ctx.createLinearGradient(CARD_W*0.2, 0, CARD_W*0.8, CARD_H);
-  const cg = scheme.card_gradient || ['#22085f','#0e042e'];
-  grad.addColorStop(0, cg[0]||'#22085f');
+  // ── Card background gradient ──
+  const cg = scheme.card_gradient || ['#22085f','#300f8a','#1a0650','#0e042e'];
+  const grad = ctx.createLinearGradient(CARD_W*0.3, 0, CARD_W*0.7, CARD_H);
+  grad.addColorStop(0,   cg[0]);
   grad.addColorStop(0.3, cg[1]||cg[0]);
-  grad.addColorStop(0.65, cg[2]||cg[1]||cg[0]);
-  grad.addColorStop(1, cg[3]||cg[cg.length-1]);
-
-  roundRect(ctx, 0, 0, CARD_W, CARD_H, CORNER);
+  grad.addColorStop(0.65,cg[2]||cg[1]||cg[0]);
+  grad.addColorStop(1,   cg[3]||cg[cg.length-1]);
+  roundRect(ctx, 0, 0, CARD_W, CARD_H, 20);
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // ── Watermarks ──
+  // ── Watermarks (all inside clip, all screen blend) ──
   ctx.save();
-  ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, CORNER); ctx.clip();
+  ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // monogram top-right (faint)
+  // Monogram top-right
   if (state.watermarks.monogram_tr) {
+    const sz = 290;
     ctx.save();
     ctx.globalAlpha = 0.08;
     ctx.globalCompositeOperation = 'screen';
-    const sz = 290;
-    ctx.translate(CARD_W - 40 + sz/2, -50 + sz/2);
+    ctx.translate(CARD_W + 40 - sz/2, -50 + sz/2);
     ctx.rotate(10 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_tr, -sz/2, -sz/2, sz, sz);
     ctx.restore();
   }
-  // monogram bottom-left
+
+  // Monogram bottom-left
   if (state.watermarks.monogram_bl) {
+    const sz = 290;
     ctx.save();
     ctx.globalAlpha = 0.07;
     ctx.globalCompositeOperation = 'screen';
-    const sz = 290;
     ctx.translate(-40 + sz/2, CARD_H + 50 - sz/2);
     ctx.rotate(-8 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_bl, -sz/2, -sz/2, sz, sz);
     ctx.restore();
   }
-  // centre photo
+
+  // Centre photo watermark
   if (state.watermarks.photo_centre) {
     ctx.save();
-    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 1;
     const w = 364;
     const aspect = state.watermarks.photo_centre.naturalHeight / state.watermarks.photo_centre.naturalWidth;
     const h = w * aspect;
@@ -831,264 +840,311 @@ async function renderCard() {
     ctx.drawImage(state.watermarks.photo_centre, -w/2, -h/2, w, h);
     ctx.restore();
   }
-  // player left
+
+  // Player LEFT - positioned from bottom, matching reference: bottom:270px, left:-10px
   if (state.watermarks.player_left) {
     ctx.save();
-    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 1;
     const w = 126;
     const aspect = state.watermarks.player_left.naturalHeight / state.watermarks.player_left.naturalWidth;
-    ctx.translate(-10, CARD_H - 270);
+    const h = w * aspect;
+    // bottom:270px left:-10px rotate(-3deg)
+    const x = -10, y = CARD_H - 270 - h;
+    ctx.translate(x + w/2, y + h/2);
     ctx.rotate(-3 * Math.PI/180);
-    ctx.drawImage(state.watermarks.player_left, 0, 0, w, w * aspect);
-    ctx.restore();
-  }
-  // player right
-  if (state.watermarks.player_right) {
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'screen';
-    const w = 200;
-    const aspect = state.watermarks.player_right.naturalHeight / state.watermarks.player_right.naturalWidth;
-    ctx.translate(CARD_W - 10 - w, CARD_H - 20 - w * aspect);
-    ctx.rotate(3 * Math.PI/180);
-    ctx.drawImage(state.watermarks.player_right, 0, 0, w, w * aspect);
+    ctx.drawImage(state.watermarks.player_left, -w/2, -h/2, w, h);
     ctx.restore();
   }
 
-  // subtle dot grid
+  // Player RIGHT - bottom:20px right:-10px rotate(3deg)
+  if (state.watermarks.player_right) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 1;
+    const w = 200;
+    const aspect = state.watermarks.player_right.naturalHeight / state.watermarks.player_right.naturalWidth;
+    const h = w * aspect;
+    const x = CARD_W - 10 - w, y = CARD_H - 20 - h;
+    ctx.translate(x + w/2, y + h/2);
+    ctx.rotate(3 * Math.PI/180);
+    ctx.drawImage(state.watermarks.player_right, -w/2, -h/2, w, h);
+    ctx.restore();
+  }
+
+  // Dot grid
   ctx.save();
   ctx.globalAlpha = 0.035;
   ctx.fillStyle = '#ffffff';
-  for (let x = 0; x < CARD_W; x += 18) {
+  for (let x = 0; x < CARD_W; x += 18)
     for (let y = 0; y < CARD_H; y += 18) {
       ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI*2); ctx.fill();
     }
-  }
   ctx.restore();
 
-  ctx.restore(); // end clip
-  // Ensure blend mode is reset for all subsequent drawing
+  ctx.restore(); // end watermark clip
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 
   // ── Header ──
-  let hx = PAD_X, hy = PAD_Y;
+  let hx = PAD_X, hy = PAD_TOP;
 
-  // Badge
   if (state.badgeImg) {
-    const bh = 68;
-    const bw = bh * (state.badgeImg.naturalWidth / state.badgeImg.naturalHeight);
+    const bh = 68, bw = bh * state.badgeImg.naturalWidth / state.badgeImg.naturalHeight;
     ctx.drawImage(state.badgeImg, hx, hy, bw, bh);
     hx += bw + 14;
   }
 
-  // Team name
-  ctx.font = `900 ${teamName.length > 14 ? '38px' : '44px'} / 1 'Barlow Condensed', 'Arial Narrow', Arial`;
-  ctx.letterSpacing = '1px';
-  ctx.fillStyle = '#fff';
+  const ac = scheme.accent_color || '#f5c800';
+  const nameSize = teamName.length > 16 ? 36 : teamName.length > 12 ? 40 : 46;
+  ctx.font = `900 ${nameSize}px 'Barlow Condensed', 'Arial Narrow', Arial`;
+  ctx.fillStyle = '#ffffff';
   ctx.textBaseline = 'top';
-  ctx.fillText(teamName.toUpperCase(), hx, hy + 2);
+  ctx.textAlign = 'left';
+  ctx.letterSpacing = '1px';
+  ctx.fillText(teamName, hx, hy + 2);
 
-  // Club name
-  ctx.font = `700 14px / 1 'Barlow Condensed', Arial`;
+  ctx.font = `700 13px 'Barlow Condensed', Arial`;
   ctx.letterSpacing = '1.5px';
-  ctx.fillStyle = scheme.accent_color || '#f5c800';
-  ctx.fillText(clubName.toUpperCase(), hx, hy + 52);
+  ctx.fillStyle = ac;
+  ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
-  // Sub-label
   if (sublabel) {
-    ctx.font = `600 12px / 1 'Barlow Condensed', Arial`;
-    ctx.letterSpacing = '1px';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText(sublabel.toUpperCase(), hx, hy + 70);
+    ctx.font = `600 11px 'Barlow Condensed', Arial`;
+    ctx.letterSpacing = '0.8px';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(sublabel.toUpperCase(), hx, hy + nameSize + 22);
   }
 
-  // ── Fixture rows ──
-  let ry = PAD_Y + HEADER_H + 12;
-  const COL_RND = 28, COL_DATE = 58, COL_TEAMS = CARD_W - PAD_X*2 - COL_RND - COL_DATE - 10;
-  const rx = PAD_X;
-  const ac = scheme.accent_color || '#f5c800';
-  const nPill = scheme.norwood_pill_gradient || ['#5520b0','#6b35d0'];
-  const oPill = scheme.opp_pill_gradient || ['#2a1470','#3a2290'];
-  const dbBg = scheme.date_badge_bg || '#f5c800';
+  // ── Grid layout constants (match reference) ──
+  // grid-template-columns: 24px 52px 1fr 38px 1fr
+  const COL_RND  = 24;
+  const COL_DATE = 52;
+  const COL_VS   = 38;
+  const usable   = CARD_W - PAD_X*2;
+  const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS) / 2; // 1fr each
+
+  const dbBg  = scheme.date_badge_bg   || '#f5c800';
   const dbTxt = scheme.date_badge_text || '#1a0858';
-  const rlColor = scheme.round_label_color || ac;
-  const vsColor = scheme.vs_circle_text || '#1a0858';
+  const rlCol = scheme.round_label_color || ac;
+  const vsCol = scheme.vs_circle_text  || '#1a0858';
+  const nPill = scheme.norwood_pill_gradient || ['#5520b0','#6b35d0'];
+  const oPill = scheme.opp_pill_gradient     || ['#2a1470','#3a2290'];
   const pillTxt = scheme.pill_text_color || '#fff';
+
+  let ry = PAD_TOP + HEADER_H + BETWEEN;
+  const rx = PAD_X;
 
   for (const row of allRows) {
     if (row.type === 'bye') {
-      // Bye row - slim separator spanning full width
-      const byeH = 32;
+      // Single subtle divider line with BYE text
+      const midY = ry + BYE_H/2;
       ctx.save();
-      ctx.strokeStyle = addAlpha(ac, 0.25);
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 6]);
-      roundRect(ctx, rx, ry + (ROW_H - byeH)/2, CARD_W - PAD_X*2, byeH, 50);
+      ctx.strokeStyle = addAlpha(ac, 0.22);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx, midY); ctx.lineTo(CARD_W - PAD_X, midY);
       ctx.stroke();
-      ctx.restore();
-      ctx.font = `800 12px / 1 'Barlow Condensed', Arial`;
+      // BYE label centred on the line
+      ctx.font = `700 9px 'Barlow Condensed', Arial`;
       ctx.letterSpacing = '3px';
-      ctx.fillStyle = addAlpha(ac, 0.6);
+      ctx.fillStyle = addAlpha(ac, 0.55);
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
-      ctx.fillText(`BYE  ${row.date}`, CARD_W/2, ry + ROW_H/2);
-      ctx.textAlign = 'left';
-    } else {
-      const f = row;
-      const oppShort = shortName(f.opponent);
-
-      // Round label (rotated)
-      ctx.save();
-      ctx.font = `900 12px / 1 'Barlow Condensed', Arial`;
-      ctx.letterSpacing = '0.5px';
-      ctx.fillStyle = rlColor;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-      ctx.translate(rx + COL_RND/2, ry + ROW_H/2);
-      ctx.rotate(-Math.PI/2);
-      ctx.fillText(f.round.toUpperCase(), 0, 0);
+      const label = `BYE  ${row.date}`;
+      const lw = ctx.measureText(label).width + 16;
+      // White-out behind text
+      ctx.fillStyle = cg[0];
+      ctx.fillRect(CARD_W/2 - lw/2, midY - 7, lw, 14);
+      ctx.fillStyle = addAlpha(ac, 0.55);
+      ctx.fillText(label, CARD_W/2, midY);
       ctx.restore();
-
-      // Date badge
-      roundRect(ctx, rx + COL_RND + 4, ry + 4, COL_DATE - 4, ROW_H - 8, 50);
-      ctx.fillStyle = dbBg;
-      ctx.fill();
-      ctx.font = `900 13px / 1 'Barlow Condensed', Arial`;
-      ctx.letterSpacing = '0.5px';
-      ctx.fillStyle = dbTxt;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-      const dateCX = rx + COL_RND + 4 + (COL_DATE-4)/2;
-      ctx.fillText(f.date, dateCX, ry + ROW_H/2 - 7);
-      ctx.font = `700 10px / 1 'Barlow Condensed', Arial`;
-      ctx.globalAlpha = 0.8;
-      ctx.fillText(f.time, dateCX, ry + ROW_H/2 + 8);
-      ctx.globalAlpha = 1;
-
-      // Teams area
-      const teamX = rx + COL_RND + COL_DATE + 10;
-      const teamW = CARD_W - PAD_X - teamX;
-      const vsW = 36, vsX = teamX + (teamW - vsW) / 2;
-      const pillW = (teamW - vsW - 8) / 2;
-      const leftPillX = teamX, rightPillX = teamX + pillW + vsW + 8;
-      const pillH = ROW_H - 8, pillY = ry + 4;
-
-      // Left pill (home-team = Norwood if isHome, else opponent)
-      const leftIsNorwood = f.isHome;
-      const leftGrad = leftIsNorwood ? nPill : oPill;
-      const rightGrad = leftIsNorwood ? oPill : nPill;
-      const leftCrest = leftIsNorwood ? state.norwood_crest : state.crests[ALIASES[shortName(f.opponent)]||shortName(f.opponent)];
-      const rightCrest = leftIsNorwood ? state.crests[ALIASES[shortName(f.opponent)]||shortName(f.opponent)] : state.norwood_crest;
-      const leftName = leftIsNorwood ? 'NORWOOD' : oppShort;
-      const rightName = leftIsNorwood ? oppShort : 'NORWOOD';
-      // Only show venue in the opponent pill (not in the Norwood pill)
-      const leftVenue = leftIsNorwood ? '' : f.venue;
-      const rightVenue = leftIsNorwood ? f.venue : '';
-
-      drawPill(ctx, leftPillX, pillY, pillW, pillH, leftGrad, leftCrest, leftName, leftVenue, 'right', pillTxt);
-      drawPill(ctx, rightPillX, pillY, pillW, pillH, rightGrad, rightCrest, rightName, rightVenue, 'left', pillTxt);
-
-      // VS circle
-      ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.beginPath(); ctx.arc(vsX + vsW/2, ry + ROW_H/2, vsW/2 - 1, 0, Math.PI*2); ctx.fill();
-      ctx.font = `900 11px / 1 'Barlow Condensed', Arial`;
-      ctx.fillStyle = vsColor;
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-      ctx.fillText('VS', vsX + vsW/2, ry + ROW_H/2);
-      ctx.restore();
+      ry += BYE_H + ROW_GAP;
+      continue;
     }
 
-    ry += ROW_H + 5;
+    const f = row;
+    const oppShort = shortName(f.opponent);
+    const x0 = rx;
+
+    // Column x positions
+    const xRnd  = x0;
+    const xDate = x0 + COL_RND;
+    const xLP   = x0 + COL_RND + COL_DATE; // left pill
+    const xVS   = xLP + COL_PILL;
+    const xRP   = xVS + COL_VS;             // right pill
+
+    // Round label (vertical)
+    ctx.save();
+    ctx.font = `900 13px 'Barlow Condensed', Arial`;
+    ctx.letterSpacing = '0.5px';
+    ctx.fillStyle = rlCol;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.translate(xRnd + COL_RND/2, ry + ROW_H/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText(f.round.toUpperCase(), 0, 0);
+    ctx.restore();
+
+    // Date badge - fully rounded, centred in its column
+    const dbX = xDate + 1, dbY = ry + 1, dbW = COL_DATE - 2, dbH = ROW_H - 2;
+    roundRect(ctx, dbX, dbY, dbW, dbH, 50);
+    ctx.fillStyle = dbBg; ctx.fill();
+    // Date text
+    ctx.font = `900 14px 'Barlow Condensed', Arial`;
+    ctx.letterSpacing = '0.5px';
+    ctx.fillStyle = dbTxt;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    const dbMX = dbX + dbW/2;
+    ctx.fillText(f.date, dbMX, ry + ROW_H/2 - 8);
+    // Time text
+    ctx.font = `800 10px 'Barlow Condensed', Arial`;
+    ctx.fillText(f.time, dbMX, ry + ROW_H/2 + 8);
+
+    // Pills
+    const leftIsNorwood = f.isHome;
+    const leftCrest  = leftIsNorwood ? state.norwood_crest : state.crests[ALIASES[oppShort]||oppShort];
+    const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.norwood_crest;
+    const leftName   = leftIsNorwood ? 'NORWOOD' : oppShort;
+    const rightName  = leftIsNorwood ? oppShort  : 'NORWOOD';
+    // Venue: only show in opponent pill, and only when it's a known venue
+    const leftVenue  = leftIsNorwood ? ''        : f.venue;
+    const rightVenue = leftIsNorwood ? f.venue   : '';
+
+    // Left pill - crest on LEFT, text on RIGHT
+    drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
+      leftIsNorwood ? nPill : oPill,
+      leftCrest, leftName, leftVenue, 'left', pillTxt, cg[0]);
+
+    // Right pill - text on LEFT, crest on RIGHT
+    drawPill(ctx, xRP, ry, COL_PILL, ROW_H,
+      leftIsNorwood ? oPill : nPill,
+      rightCrest, rightName, rightVenue, 'right', pillTxt, cg[0]);
+
+    // VS circle
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(xVS + COL_VS/2, ry + ROW_H/2, COL_VS/2 - 1, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.font = `900 11px 'Barlow Condensed', Arial`;
+    ctx.fillStyle = vsCol;
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillText('VS', xVS + COL_VS/2, ry + ROW_H/2);
+    ctx.restore();
+
+    ry += ROW_H + ROW_GAP;
   }
 
-  // ── Finals block ──
+  // ── Finals ──
   if (hasFinals) {
+    ry += 8;
     const w1 = document.getElementById('finals-w1').value;
     const w2 = document.getElementById('finals-w2').value;
     const gf = document.getElementById('finals-gf').value;
-    ry += 6;
-    // Accent line
-    const lineGrad = ctx.createLinearGradient(PAD_X, 0, CARD_W - PAD_X, 0);
-    lineGrad.addColorStop(0, 'transparent');
-    lineGrad.addColorStop(0.2, ac);
-    lineGrad.addColorStop(0.8, ac);
-    lineGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = lineGrad;
-    ctx.fillRect(PAD_X, ry, CARD_W - PAD_X*2, 1.5);
-    ry += 10;
 
-    // Week 1 & 2
-    ctx.font = `700 13px / 1 'Barlow Condensed', Arial`;
+    // Accent line
+    const lg = ctx.createLinearGradient(PAD_X, 0, CARD_W-PAD_X, 0);
+    lg.addColorStop(0, 'transparent');
+    lg.addColorStop(0.2, ac); lg.addColorStop(0.8, ac);
+    lg.addColorStop(1, 'transparent');
+    ctx.fillStyle = lg; ctx.fillRect(PAD_X, ry, CARD_W-PAD_X*2, 1.5);
+    ry += 12;
+
+    ctx.font = `700 13px 'Barlow Condensed', Arial`;
     ctx.letterSpacing = '0.5px';
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.textBaseline = 'top'; ctx.textAlign = 'center';
-    ctx.fillText(`${w1}  Week 1 Finals`, CARD_W/2 - 80, ry);
-    ctx.fillStyle = addAlpha(ac, 0.5); ctx.fillText('|', CARD_W/2, ry);
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    const col1W = (CARD_W - PAD_X*2)/2 - 10;
+    ctx.fillText(`${w1}  Week 1 Finals`, PAD_X, ry);
+    ctx.fillStyle = addAlpha(ac, 0.4);
+    ctx.fillText('|', CARD_W/2, ry);
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillText(`${w2}  Week 2 Finals`, CARD_W/2 + 80, ry);
+    ctx.fillText(`${w2}  Week 2 Finals`, CARD_W/2 + 12, ry);
 
-    ry += 22;
-    ctx.font = `900 16px / 1 'Barlow Condensed', Arial`;
+    ry += 20;
+    ctx.font = `900 16px 'Barlow Condensed', Arial`;
     ctx.fillStyle = ac;
+    ctx.textAlign = 'center';
     ctx.fillText(`${gf}  Grand Final`, CARD_W/2, ry);
   }
 
-  // Show canvas
   document.getElementById('card-canvas-wrap').style.display = 'block';
-  document.getElementById('preview').querySelector('.preview-placeholder')?.remove();
+  const ph = document.querySelector('.preview-placeholder');
+  if (ph) ph.remove();
   state.generated = true;
   document.getElementById('btn-png').disabled = false;
   document.getElementById('btn-print').disabled = false;
 }
 
-// ── Draw pill ────────────────────────────────────────────────
-function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, textAlign, txtColor) {
-  // Background
+// ── Draw pill (matches reference HTML exactly) ──────────────
+// crestSide: 'left' = crest on left, text on right (pill-left)
+//            'right' = text on left, crest on right (pill-right)
+function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide, txtColor, bgFallback) {
+  // Background gradient
   const g = ctx.createLinearGradient(x, y, x+w, y);
   g.addColorStop(0, gradColors[0]||'#333');
-  g.addColorStop(1, gradColors[1]||gradColors[0]||'#333');
-  roundRect(ctx, x, y, w, h, 50);
+  g.addColorStop(1, gradColors[1]||gradColors[0]);
+  // border-radius: 8px (rectangular, not pill)
+  roundRect(ctx, x, y+1, w, h-2, 8);
   ctx.fillStyle = g; ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
 
-  const crestD = h - 8, crestR = crestD/2;
-  const crestX = textAlign === 'right' ? x + 4 : x + w - 4 - crestD;
-  const crestY = y + 4;
-  const textX = textAlign === 'right' ? crestX + crestD + 6 : x + 6;
-  const textW = w - crestD - 14;
+  const CREST_D = 34;
+  const CREST_R = CREST_D/2;
+  const crestPad = 7;
 
-  // Crest circle
+  const crestX = crestSide === 'left' ? x + crestPad : x + w - crestPad - CREST_D;
+  const crestY = y + (h - CREST_D)/2;
+  const textX  = crestSide === 'left' ? crestX + CREST_D + 6 : x + 6;
+  const textW  = w - CREST_D - crestPad*2 - 6;
+
+  // Crest circle with white border (reference: border:2px solid rgba(255,255,255,0.85))
   ctx.save();
-  ctx.beginPath(); ctx.arc(crestX + crestR, crestY + crestR, crestR, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+  ctx.beginPath();
+  ctx.arc(crestX + CREST_R, crestY + CREST_R, CREST_R + 2, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(crestX + CREST_R, crestY + CREST_R, CREST_R, 0, Math.PI*2);
+  ctx.fillStyle = bgFallback || '#2a1060';
+  ctx.fill();
   ctx.clip();
   if (crestImg) {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    ctx.drawImage(crestImg, crestX, crestY, crestD, crestD);
+    // object-fit:cover - fill the circle
+    const s = CREST_D * 1.05;
+    ctx.drawImage(crestImg, crestX - (s-CREST_D)/2, crestY - (s-CREST_D)/2, s, s);
   }
   ctx.restore();
 
-  // Name
-  ctx.font = `900 12px / 1 'Barlow Condensed', Arial`;
+  // Text (clipped to available width)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(textX, y, textW, h);
+  ctx.clip();
+
+  const textMidX = crestSide === 'left' ? textX : x + w - crestPad - CREST_D - 6;
+  const align = crestSide === 'left' ? 'left' : 'left';
+
+  ctx.font = `800 14px 'Barlow Condensed', Arial`;
   ctx.letterSpacing = '0.5px';
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
-  ctx.textAlign = textAlign === 'right' ? 'left' : 'left';
-  // clip text
-  ctx.save();
-  ctx.beginPath(); ctx.rect(textX, y, textW, h); ctx.clip();
-  ctx.fillText(name, textX, y + h/2 - 6);
-  ctx.font = `600 10px / 1 'Barlow Condensed', Arial`;
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText(venue, textX, y + h/2 + 7);
+  ctx.textAlign = 'left';
+
+  const nameY = venue ? y + h/2 - 7 : y + h/2;
+  ctx.fillText(name, textX, nameY);
+
+  if (venue) {
+    ctx.font = `600 9px 'Barlow Condensed', Arial`;
+    ctx.letterSpacing = '0.2px';
+    ctx.fillStyle = 'rgba(200,185,255,0.72)';
+    ctx.fillText(venue, textX, y + h/2 + 8);
+  }
   ctx.restore();
 }
+
 
 // ── Helpers ──────────────────────────────────────────────────
 function roundRect(ctx, x, y, w, h, r) {
