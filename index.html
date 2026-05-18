@@ -969,12 +969,14 @@ async function renderCard() {
 
   let ry = PAD_TOP + HEADER_H + BETWEEN;
   const rx = PAD_X;
+  // Pre-calculate pill x positions for use outside the row loop (finals, bye)
+  const xLP_outer = rx + COL_RND + COL_DATE;
 
   for (const row of allRows) {
     if (row.type === 'bye') {
             // Bye row — matches reference exactly: [line][BYE WEEK][line] spanning pills only
       // grid-column 3-5: starts after round-label(24px) + date(52px) + gaps
-      const bxStart = rx + COL_RND + COL_DATE + 8; // start of left pill
+      const bxStart = xLP_outer + 4; // start of left pill
       const bxEnd   = CARD_W - PAD_X;               // end of right pill
       const bmidY   = ry + BYE_H/2;
       ctx.save();
@@ -1119,7 +1121,7 @@ async function renderCard() {
 
     // Finals — spans pills section only (col 3-5), matching reference
     // Gold line
-    const fxStart = xLP;  // start of left pill
+    const fxStart = xLP_outer;  // start of left pill
     const fxEnd   = CARD_W - PAD_X;  // end of right pill
     const fxMid   = fxStart + (fxEnd - fxStart)/2;
     ry += 8;
