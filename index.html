@@ -924,7 +924,7 @@ async function renderCard() {
     hx += bw + 14;
   }
 
-  const nameSize = teamName.length > 16 ? 36 : teamName.length > 12 ? 40 : 46;
+  const nameSize = teamName.length > 16 ? 42 : teamName.length > 12 ? 48 : 54;
   ctx.font = `900 ${nameSize}px "Barlow Condensed",Arial`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
@@ -939,8 +939,8 @@ async function renderCard() {
   ctx.fillStyle = '#ffffff';
   ctx.fillText(teamName, hx, hy + 2);
 
-  ctx.font = `700 13px "Barlow Condensed",Arial`;
-  ctx.letterSpacing = '1.5px';
+  ctx.font = `700 16px "Barlow Condensed",Arial`;
+  ctx.letterSpacing = '1.6px';
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
@@ -1119,63 +1119,51 @@ async function renderCard() {
     ctx.fillStyle = lg; ctx.fillRect(PAD_X, ry, CARD_W-PAD_X*2, 1.5);
     ry += 12;
 
-    // Finals — spans pills section only (col 3-5), matching reference
-    // Gold line
-    const fxStart = xLP_outer;  // start of left pill
-    const fxEnd   = CARD_W - PAD_X;  // end of right pill
+    // Finals — spans pills section only, matching reference layout
+    const fxStart = xLP_outer;
+    const fxEnd   = CARD_W - PAD_X;
     const fxMid   = fxStart + (fxEnd - fxStart)/2;
     ry += 8;
-    // Gold gradient line
+
+    // Gold gradient line (reference: finals-gold-line)
     const flineGrad = ctx.createLinearGradient(fxStart, 0, fxEnd, 0);
     flineGrad.addColorStop(0, 'transparent');
-    flineGrad.addColorStop(0.2, ac);
-    flineGrad.addColorStop(0.8, ac);
+    flineGrad.addColorStop(0.2, ac); flineGrad.addColorStop(0.8, ac);
     flineGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = flineGrad;
     ctx.fillRect(fxStart, ry, fxEnd - fxStart, 1.5);
-    ry += 10;
+    ry += 12;
 
-    // Row 1: Week1 | Week2
-    ctx.textBaseline = 'middle';
-    ctx.letterSpacing = '0.5px';
-    const fRow1Y = ry + 7;
-    // Week 1 — centred in left half
-    const f1cx = fxStart + (fxMid - fxStart)/2;
-    ctx.font = `900 13px "Barlow Condensed",Arial`;
-    ctx.fillStyle = ac; ctx.textAlign = 'center';
-    ctx.fillText(w1, f1cx - ctx.measureText(w1 + '  Week 1 Finals').width/2 + ctx.measureText(w1).width/2, fRow1Y);
-    ctx.font = `700 13px "Barlow Condensed",Arial`;
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    const w1dateW = (() => { ctx.font = `900 13px "Barlow Condensed",Arial`; const dw = ctx.measureText(w1).width; ctx.font = `700 13px "Barlow Condensed",Arial`; return dw; })();
-    // Draw as inline: date+space+label, centred together
-    function drawFItem(cx, dateStr, label, y) {
+    // Helper: draw "DATE  Label" centred at cx — date in accent, label in white
+    const drawFItem = (cx, dateStr, label, y) => {
       ctx.font = `900 13px "Barlow Condensed",Arial`;
-      const dw = ctx.measureText(dateStr).width;
+      const dw = ctx.measureText(dateStr + '  ').width;
       ctx.font = `700 13px "Barlow Condensed",Arial`;
-      const lw = ctx.measureText(' ' + label).width;
-      const totalW = dw + lw;
-      const sx = cx - totalW/2;
+      const lw = ctx.measureText(label).width;
+      const sx = cx - (dw + lw) / 2;
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       ctx.font = `900 13px "Barlow Condensed",Arial`;
-      ctx.fillStyle = ac; ctx.textAlign = 'left';
-      ctx.fillText(dateStr, sx, y);
+      ctx.fillStyle = ac;
+      ctx.fillText(dateStr + '  ', sx, y);
       ctx.font = `700 13px "Barlow Condensed",Arial`;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText(' ' + label, sx + dw, y);
-    }
-    drawFItem(f1cx, w1, 'Week 1 Finals', fRow1Y);
-    // Divider |
+      ctx.fillText(label, sx + dw, y);
+    };
+
+    // Row 1: Week 1 | divider | Week 2
+    const fRow1Y = ry + 7;
+    drawFItem(fxStart + (fxMid - fxStart)/2, w1, 'Week 1 Finals', fRow1Y);
     ctx.font = `300 16px Arial`;
     ctx.fillStyle = 'rgba(245,200,0,0.45)';
     ctx.textAlign = 'center';
     ctx.fillText('|', fxMid, fRow1Y);
-    // Week 2 — centred in right half
-    const f2cx = fxMid + (fxEnd - fxMid)/2;
-    drawFItem(f2cx, w2, 'Week 2 Finals', fRow1Y);
+    drawFItem(fxMid + (fxEnd - fxMid)/2, w2, 'Week 2 Finals', fRow1Y);
 
     ry += 20;
-    // Row 2: Grand Final centred across full width
+    // Row 2: Grand Final centred
     drawFItem(fxStart + (fxEnd - fxStart)/2, gf, 'Grand Final', ry + 7);
   }
+
 
   document.getElementById('card-canvas-wrap').style.display = 'block';
   const ph = document.querySelector('.preview-placeholder');
@@ -1235,7 +1223,7 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.rect(textAreaX, y, textAreaW, h);
   ctx.clip();
   // Name: 700 weight (900 renders too heavy on canvas vs browser)
-  ctx.font = `700 13px "Barlow Condensed",Arial`;
+  ctx.font = `800 15px "Barlow Condensed",Arial`;
   ctx.letterSpacing = '0.5px';
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
@@ -1354,10 +1342,22 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   btn.textContent = 'Rendering…';
   btn.disabled = true;
   try {
-    // Explicitly load font and force it into canvas context
-    await document.fonts.load('900 14px "Barlow Condensed"');
-    await document.fonts.load('800 14px "Barlow Condensed"');
-    await document.fonts.load('700 14px "Barlow Condensed"');
+    // Force all font weights into canvas cache before drawing
+    await document.fonts.ready;
+    await Promise.all([
+      document.fonts.load('900 16px "Barlow Condensed"'),
+      document.fonts.load('800 16px "Barlow Condensed"'),
+      document.fonts.load('700 16px "Barlow Condensed"'),
+    ]);
+    // Warm up via offscreen canvas so canvas font cache is primed
+    try {
+      const oc = new OffscreenCanvas(400, 60);
+      const octx = oc.getContext('2d');
+      for (const w of ['900','800','700']) {
+        octx.font = `${w} 16px "Barlow Condensed"`;
+        octx.fillText('NORWOOD', 0, 40);
+      }
+    } catch(e) {}
     await renderCard();
   } catch(err) {
     console.error('renderCard error:', err);
