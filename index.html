@@ -771,10 +771,7 @@ const FOOTER_H = 80; // finals block
 const PAD_X = 24, PAD_Y = 24;
 
 async function renderCard() {
-  console.log('renderCard called, scheme:', state.scheme, 'rows:', state.rounds.length, 'selected:', state.selected.size);
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
-  if (!scheme) { throw new Error('No colour scheme found for: ' + state.scheme); }
-  console.log('scheme loaded:', scheme.name, 'cg:', scheme.card_gradient);
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
   const clubName = state.config.club_name || 'Club Name';
@@ -909,9 +906,9 @@ async function renderCard() {
   ctx.restore(); // end watermark clip
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
-  console.log('Watermarks drawn, starting header');
 
   // ── Header ──
+  const ac = scheme.accent_color || '#f5c800';
   let hx = PAD_X, hy = PAD_TOP;
 
   if (state.badgeImg) {
@@ -927,7 +924,6 @@ async function renderCard() {
     hx += bw + 14;
   }
 
-  const ac = scheme.accent_color || '#f5c800';
   const nameSize = teamName.length > 16 ? 36 : teamName.length > 12 ? 40 : 46;
   ctx.font = `900 ${nameSize}px 'Barlow Condensed',Arial`;
   ctx.textBaseline = 'top';
@@ -974,7 +970,6 @@ async function renderCard() {
   let ry = PAD_TOP + HEADER_H + BETWEEN;
   const rx = PAD_X;
 
-  console.log('Drawing rows:', allRows.length);
   for (const row of allRows) {
     if (row.type === 'bye') {
             // Bye row — gradient line with BYE WEEK label
