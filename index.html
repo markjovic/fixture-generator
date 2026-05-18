@@ -6,7 +6,7 @@
 <title>Fixture Card Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -972,25 +972,42 @@ async function renderCard() {
 
   for (const row of allRows) {
     if (row.type === 'bye') {
-            // Bye row — gradient line with BYE WEEK label
-      const midY = ry + BYE_H/2;
+            // Bye row — matches reference exactly: [line][BYE WEEK][line] spanning pills only
+      // grid-column 3-5: starts after round-label(24px) + date(52px) + gaps
+      const bxStart = rx + COL_RND + COL_DATE + 8; // start of left pill
+      const bxEnd   = CARD_W - PAD_X;               // end of right pill
+      const bmidY   = ry + BYE_H/2;
       ctx.save();
-      const byeLG = ctx.createLinearGradient(PAD_X, 0, CARD_W-PAD_X, 0);
-      byeLG.addColorStop(0, 'transparent');
-      byeLG.addColorStop(0.15, addAlpha(ac, 0.25));
-      byeLG.addColorStop(0.85, addAlpha(ac, 0.25));
-      byeLG.addColorStop(1, 'transparent');
-      ctx.fillStyle = byeLG;
-      ctx.fillRect(PAD_X, midY - 0.5, CARD_W - PAD_X*2, 1);
-      // Label — paint card bg behind text to break line, then draw text
-      ctx.font = `700 10px 'Barlow Condensed',Arial`;
-      ctx.letterSpacing = '2px';
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-      const blw = ctx.measureText('BYE WEEK').width + 20;
-      ctx.fillStyle = cg[0];
-      ctx.fillRect(CARD_W/2 - blw/2, midY - 8, blw, 16);
-      ctx.fillStyle = addAlpha(ac, 0.55);
-      ctx.fillText('BYE WEEK', CARD_W/2, midY);
+      // Measure text first
+      ctx.font = `800 9px 'Barlow Condensed',Arial`;
+      ctx.letterSpacing = '2.5px';
+      const btw = ctx.measureText('BYE WEEK').width + 20; // +padding
+      const lineW = (bxEnd - bxStart - btw) / 2;
+      // Left gradient line
+      const lg1 = ctx.createLinearGradient(bxStart, 0, bxStart + lineW, 0);
+      lg1.addColorStop(0, 'transparent');
+      lg1.addColorStop(0.3, ac);
+      lg1.addColorStop(0.7, ac);
+      lg1.addColorStop(1, ac);
+      ctx.fillStyle = lg1;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(bxStart, bmidY - 0.75, lineW, 1.5);
+      // Right gradient line
+      const lg2 = ctx.createLinearGradient(bxEnd - lineW, 0, bxEnd, 0);
+      lg2.addColorStop(0, ac);
+      lg2.addColorStop(0.3, ac);
+      lg2.addColorStop(0.7, ac);
+      lg2.addColorStop(1, 'transparent');
+      ctx.fillStyle = lg2;
+      ctx.fillRect(bxEnd - lineW, bmidY - 0.75, lineW, 1.5);
+      // Text — no background, drawn directly on card
+      ctx.font = `800 9px 'Barlow Condensed',Arial`;
+      ctx.letterSpacing = '2.5px';
+      ctx.fillStyle = ac;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText('BYE WEEK', bxStart + lineW + btw/2, bmidY);
+      ctx.globalAlpha = 1;
       ctx.restore();
       ry += BYE_H + ROW_GAP;
       continue;
@@ -1326,11 +1343,10 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   btn.textContent = 'Rendering…';
   btn.disabled = true;
   try {
-    await document.fonts.ready;
-    const warmup = document.createElement('canvas');
-    const wctx = warmup.getContext('2d');
-    wctx.font = "900 14px 'Barlow Condensed'";
-    wctx.fillText('X', 0, 0);
+    // Explicitly load font and force it into canvas context
+    await document.fonts.load("900 14px 'Barlow Condensed'");
+    await document.fonts.load("800 14px 'Barlow Condensed'");
+    await document.fonts.load("700 14px 'Barlow Condensed'");
     await renderCard();
   } catch(err) {
     console.error('renderCard error:', err);
