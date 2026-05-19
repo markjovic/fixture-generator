@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.21</span>
+    <span class="badge">Beta 0.24</span>
   </header>
 
   <!-- Left panel -->
@@ -456,11 +456,19 @@ html, body {
         <input type="text" id="team-name" value="U12 Purple 2026" placeholder="e.g. U12 Purple 2026">
       </div>
       <div class="field">
+        <label>Club name <span style="font-weight:400;text-transform:none;letter-spacing:0">(shown under team name)</span></label>
+        <input type="text" id="club-name" value="Norwood Junior Football Club" placeholder="e.g. Norwood Junior Football Club">
+      </div>
+      <div class="field">
         <label>League / division <span style="font-weight:400;text-transform:none;letter-spacing:0">(shown under club name)</span></label>
         <input type="text" id="team-sublabel" value="Eastern Football Netball League" placeholder="e.g. EFNL Under 12">
       </div>
+      <div class="field">
+        <label>Home venue <span style="font-weight:400;text-transform:none;letter-spacing:0">(auto-detected from fixture file)</span></label>
+        <input type="text" id="home-venue" placeholder="e.g. Mullum Mullum Reserve">
+      </div>
       <div class="alert alert-info" style="font-size:12px;line-height:1.5">
-        <strong>Home venue</strong> and <strong>club name</strong> are set in <code>config.json</code>. The heading badge is <code>assets/badge.png</code>. Replace these files to update them.
+        The heading badge is <code>assets/badge.png</code>. Home venue is auto-detected from your fixture file, or set it in <code>config.json</code>.
       </div>
     </div>
 
@@ -802,6 +810,20 @@ function parsePlayHQ(html) {
   return results;
 }
 
+function detectHomeVenue(results) {
+  // Count venues from home games — most frequent wins, ties broken alphabetically
+  const counts = {};
+  results.forEach(f => {
+    if (f.type === 'fixture' && f.isHome && f.venue) {
+      counts[f.venue] = (counts[f.venue] || 0) + 1;
+    }
+  });
+  if (!Object.keys(counts).length) return '';
+  const max = Math.max(...Object.values(counts));
+  const candidates = Object.keys(counts).filter(v => counts[v] === max).sort();
+  return candidates[0];
+}
+
 // ── Crest loader ────────────────────────────────────────────
 async function getCrest(playhqName) {
   const cleaned = shortName(playhqName);
@@ -877,15 +899,15 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.21] Canvas font:', testCtx.font);
-  console.log('[v0.21] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.21] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.21] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.24] Canvas font:', testCtx.font);
+  console.log('[v0.24] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.24] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.24] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
-  const clubName = state.config.club_name || 'Club Name';
-  const homeVenue = state.config.home_venue || '';
+  const clubName = document.getElementById('club-name')?.value.trim() || state.config.club_name || 'Club Name';
+  const homeVenue = (document.getElementById('home-venue')?.value || state.config.home_venue || '').trim();
   const hasFinals = document.getElementById('has-finals').checked;
 
   const allRows = state.rounds.filter((_,i) => state.selected.has(i));
@@ -1188,10 +1210,13 @@ async function renderCard() {
     const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.norwood_crest;
     const leftName   = leftIsNorwood ? 'NORWOOD' : oppShort;
     const rightName  = leftIsNorwood ? oppShort  : 'NORWOOD';
-    // Venue: show in opponent pill ONLY when Norwood is away (opponent is hosting)
-    // Never show venue when Norwood is home (everyone knows Mullum Mullum)
-    const leftVenue  = leftIsNorwood ? '' : (f.isHome ? '' : f.venue);
-    const rightVenue = leftIsNorwood ? (f.isHome ? '' : f.venue) : '';
+    // Show venue only when game is at a non-standard ground
+    // Left pill = home team, right pill = away team
+    // Show venue under home team pill if it differs from configured home venue
+    const gameVenue = f.venue || '';
+    const showVenue = gameVenue && gameVenue !== homeVenue;
+    const leftVenue  = showVenue ? gameVenue : '';
+    const rightVenue = '';  // never show venue under away team pill
 
     // Left pill - crest on LEFT, text on RIGHT
     drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
@@ -1228,7 +1253,7 @@ async function renderCard() {
     if (hasScore) {
       // Horizontal: home | away
       ctx.font = `700 8px "Outfit",sans-serif`;
-      const scoreText = f.homeScore + ' | ' + f.awayScore;
+      const scoreText = f.homeScore + '-' + f.awayScore;
       // If too wide for circle, use smaller font
       if (ctx.measureText(scoreText).width > vsR * 1.8) {
         ctx.font = `600 7px "Outfit",sans-serif`;
@@ -1268,16 +1293,15 @@ async function renderCard() {
 
     // Helper: draw "DATE  Label" centred at cx — date in accent, label in white
     const drawFItem = (cx, dateStr, label, y) => {
+      // Same font size for date and label
       ctx.font = `400 14px "Outfit",sans-serif`;
-      const dw = ctx.measureText(dateStr + '  ').width;
-      ctx.font = `400 14px "Outfit",sans-serif`;
+      const sep = '  ';
+      const dw = ctx.measureText(dateStr + sep).width;
       const lw = ctx.measureText(label).width;
       const sx = cx - (dw + lw) / 2;
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.font = `500 15px "Outfit",sans-serif`;
       ctx.fillStyle = ac;
-      ctx.fillText(dateStr + '  ', sx, y);
-      ctx.font = `400 14px "Outfit",sans-serif`;
+      ctx.fillText(dateStr + sep, sx, y);
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillText(label, sx + dw, y);
     };
@@ -1523,7 +1547,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 });
 
 // Re-render on live changes
-['team-name','team-sublabel','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
+['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
     el.dataset.userEdited = 'true';
@@ -1561,6 +1585,15 @@ document.getElementById('btn-print').addEventListener('click', () => {
 // ── Init ────────────────────────────────────────────────────
 (async () => {
   await loadAllAssets();
+  // Populate club name from config
+  const clubNameEl = document.getElementById('club-name');
+  if (clubNameEl && state.config.club_name) {
+    clubNameEl.value = state.config.club_name;
+  }
+  const venueEl = document.getElementById('home-venue');
+  if (venueEl && state.config.home_venue) {
+    venueEl.value = state.config.home_venue;
+  }
   // Panel tabs init
   document.getElementById('tab-fixtures').style.display = 'flex';
   document.getElementById('tab-team').style.display = 'none';
@@ -1597,12 +1630,22 @@ document.getElementById('file-input').addEventListener('change', async e => {
   if (teamInfo) {
     const nameField = document.getElementById('team-name');
     const sublabelField = document.getElementById('team-sublabel');
+    const clubField = document.getElementById('club-name');
     if (nameField && !nameField.dataset.userEdited) {
       nameField.value = teamInfo.displayName || teamInfo.fullTeamName;
     }
     if (sublabelField && !sublabelField.dataset.userEdited) {
       sublabelField.value = teamInfo.league;
     }
+    if (clubField && !clubField.dataset.userEdited && !clubField.value) {
+      clubField.value = teamInfo.clubName;
+    }
+  }
+  // Auto-detect home venue from fixture data
+  const venueField = document.getElementById('home-venue');
+  if (venueField && !venueField.dataset.userEdited) {
+    const detectedVenue = detectHomeVenue(results);
+    if (detectedVenue) venueField.value = detectedVenue;
   }
   processResults(results, fb);
 });
