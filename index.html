@@ -467,6 +467,7 @@ html, body {
         <label>Home venue <span style="font-weight:400;text-transform:none;letter-spacing:0">(auto-detected from fixture file)</span></label>
         <input type="text" id="home-venue" placeholder="e.g. Mullum Mullum Reserve">
       </div>
+      
     </div>
 
     <!-- COLOURS TAB -->
@@ -492,9 +493,10 @@ html, body {
         </div>
       </div>
       <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
-      <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border)">
+      <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
       </div>
+      
     </div>
 
     <!-- FINALS TAB -->
@@ -532,7 +534,155 @@ html, body {
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
       <p>Upload a fixture file and click<br><strong style="color:var(--text2)">Generate Card</strong> to preview</p>
     </div>
-    
+    <div id="card-canvas-wrap" style="display:none">
+      <canvas id="card-canvas"></canvas>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG LOADER
+//  Reads config.json, assets/colours.json, assets/badge.png
+//  Falls back to hardcoded defaults if files not found
+// ═══════════════════════════════════════════════════════════
+
+const DEFAULT_CONFIG = {
+  club_name: "Norwood Junior Football Club",
+  home_venue: "Mullum Mullum Reserve",
+  default_scheme: "purple"
+};
+
+const DEFAULT_COLOURS = {
+  purple: {
+    name: "Purple",
+    card_gradient: ["#22085f","#300f8a","#1a0650","#0e042e"],
+    body_bg: "#0d0530",
+    card_shadow: "rgba(80,20,200,0.55)",
+    norwood_pill_gradient: ["#5520b0","#6b35d0"],
+    opp_pill_gradient: ["#2a1470","#3a2290"],
+    date_badge_bg: "#f5c800",
+    date_badge_text: "#1a0858",
+    round_label_color: "rgba(245,200,0,0.9)",
+    vs_circle_text: "#1a0858",
+    accent_color: "#f5c800",
+    finals_line_color: "#f5c800",
+    pill_text_color: "#fff"
+  },
+  gold: {
+    name: "Gold",
+    card_gradient: ["#6b5800","#5a4800","#473800","#2e2400"],
+    body_bg: "#2a2000",
+    card_shadow: "rgba(255,220,0,0.6)",
+    norwood_pill_gradient: ["#f0d000","#ffe600"],
+    opp_pill_gradient: ["#c8a800","#b89400"],
+    date_badge_bg: "#5520b0",
+    date_badge_text: "#fff",
+    round_label_color: "rgba(255,230,0,0.95)",
+    vs_circle_text: "#1a0858",
+    accent_color: "#ffe600",
+    finals_line_color: "#7730d0",
+    pill_text_color: "#1a0858"
+  }
+};
+
+// ── State ───────────────────────────────────────────────────
+const state = {
+  config: {...DEFAULT_CONFIG},
+  colours: {...DEFAULT_COLOURS},
+  scheme: "purple",
+  badgeImg: null,       // HTMLImageElement
+  norwood_crest: null,  // HTMLImageElement — pill crest
+  crests: {},           // { "MITCHAM": HTMLImageElement, ... }
+  watermarks: {},       // { player_left, player_right, photo_centre, monogram_tr, monogram_bl }
+  rounds: [],           // parsed fixture rows
+  selected: new Set(),
+  byes: [],
+  generated: false,
+};
+
+// ── Asset loading ───────────────────────────────────────────
+async function loadJSON(path, fallback) {
+  try {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error();
+    return await r.json();
+  } catch { return fallback; }
+}
+
+async function loadImage(path) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = path;
+  });
+}
+
+async function loadAllAssets() {
+  // Config & colours
+  const [cfg, colours] = await Promise.all([
+    loadJSON('config.json', DEFAULT_CONFIG),
+    loadJSON('assets/colours.json', DEFAULT_COLOURS),
+  ]);
+  state.config = cfg;
+  state.colours = colours;
+  // scheme now derived from primary/secondary colours
+
+  // Badge & watermarks in parallel
+  const [badge, wm_pl, wm_pr, wm_ph, wm_tr, wm_bl, crestNorwood] = await Promise.all([
+    loadImage('assets/badge.png'),
+    loadImage('assets/wm_player_left.png'),
+    loadImage('assets/wm_player_right.png'),
+    loadImage('assets/wm_photo_centre.png'),
+    loadImage('assets/wm_monogram_tr.png'),
+    loadImage('assets/wm_monogram_bl.png'),
+    loadImage('crests/NORWOOD.png'),
+  ]);
+  state.badgeImg = badge;
+  state.watermarks = { player_left: wm_pl, player_right: wm_pr, photo_centre: wm_ph, monogram_tr: wm_tr, monogram_bl: wm_bl };
+  state.norwood_crest = crestNorwood;
+
+  buildSchemePicker();
+}
+
+// ── UI builders ─────────────────────────────────────────────
+function getColours() {
+  return {
+    primary:   document.getElementById('color-primary')?.value || '#22085f',
+    secondary: document.getElementById('color-secondary')?.value || '#f5c800',
+  };
+}
+
+function setColours(primary, secondary) {
+  const pEl = document.getElementById('color-primary');
+  const sEl = document.getElementById('color-secondary');
+  const pHex = document.getElementById('color-primary-hex');
+  const sHex = document.getElementById('color-secondary-hex');
+  if (pEl) pEl.value = primary;
+  if (sEl) sEl.value = secondary;
+  if (pHex) pHex.value = primary;
+  if (sHex) sHex.value = secondary;
+  updateColourPreview();
+  if (state.generated) renderCard();
+}
+
+function updateColourPreview() {
+  const { primary, secondary } = getColours();
+  const preview = document.getElementById('colour-preview');
+  if (!preview) return;
+  const swatches = [
+    { l: 'Card dark',    c: darken(primary, 0.5) },
+    { l: 'Card mid',     c: darken(primary, 0.3) },
+    { l: 'Card',         c: primary },
+    { l: 'Club pill',    c: lighten(primary, 0.18) },
+    { l: 'Opp pill',     c: lighten(primary, 0.08) },
+    { l: 'Secondary',    c: secondary },
+  ];
+  preview.innerHTML = swatches.map(s =>
+    `<div style="text-align:center">
+      <div style="width:40px;height:40px;border-radius:4px;background:${s.c};border:0.5px solid rgba(0,0,0,0.15);margin:0 auto 4px"></div>
       <div style="font-size:10px;color:var(--text3)">${s.l}</div>
     </div>`
   ).join('');
