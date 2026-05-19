@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.32</span>
+    <span class="badge">Beta 0.33</span>
   </header>
 
   <!-- Left panel -->
@@ -772,13 +772,19 @@ function detectTeamInfo(htmlText) {
   const year = yearMatch ? yearMatch[1] : '';
   // Colour from full team name: last word if it's a colour
   const colours = ['Purple','Gold','Blue','Red','Green','White','Black','Silver','Navy','Yellow','Orange'];
-  const words = fullTeamName.split(' ');
+  const words = fullTeamName.split(/[\s/]+/);
   const colour = colours.find(c => words.includes(c)) || '';
   // Age group from grade: "U12 - B" → "U12"
   const ageMatch = grade.match(/U(\d+)/i);
   const age = ageMatch ? 'U' + ageMatch[1] : '';
   // Build display name: "U12 Purple 2026"
-  const displayName = [age, colour, year].filter(Boolean).join(' ');
+  // For merged teams like "Norwood Gold/Heathmont U12",
+  // strip the club prefix and age suffix to get the team descriptor
+  const teamDescriptor = fullTeamName
+    .replace(new RegExp('^' + clubName + '\\s*', 'i'), '')  // remove club prefix
+    .replace(/\s+U\d+.*$/i, '')  // remove age suffix
+    .trim();  // e.g. "Gold/Heathmont"
+  const displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
 
   return { fullTeamName, clubName, league, grade, displayName, year, colour };
 }
@@ -816,18 +822,25 @@ function parsePlayHQ(html) {
 }
 
 function detectHomeVenue(results) {
-  // Count venues from home games — most frequent wins, ties broken alphabetically
+  // Count venues from home games
   const counts = {};
+  let total = 0;
   results.forEach(f => {
     if (f.type === 'fixture' && f.isHome && f.venue) {
       counts[f.venue] = (counts[f.venue] || 0) + 1;
+      total++;
     }
   });
-  if (!Object.keys(counts).length) return '';
-  const max = Math.max(...Object.values(counts));
-  const candidates = Object.keys(counts).filter(v => counts[v] === max).sort();
-  return candidates[0];
+  if (!total) return '';
+  // Find dominant venue (≥80% of home games)
+  for (const [venue, count] of Object.entries(counts)) {
+    if (count / total >= 0.8) return venue;
+  }
+  // No dominant venue — return empty string (all venues will be shown)
+  return '';
 }
+
+
 
 // ── Crest loader ────────────────────────────────────────────
 // Alias table: PlayHQ name variations → canonical crest filename key
@@ -932,10 +945,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.32] Canvas font:', testCtx.font);
-  console.log('[v0.32] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.32] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.32] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.33] Canvas font:', testCtx.font);
+  console.log('[v0.33] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.33] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.33] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1243,13 +1256,13 @@ async function renderCard() {
     const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.norwood_crest;
     const leftName   = leftIsNorwood ? 'NORWOOD' : oppShort;
     const rightName  = leftIsNorwood ? oppShort  : 'NORWOOD';
-    // Show venue only when game is at a non-standard ground
-    // Left pill = home team, right pill = away team
-    // Show venue under home team pill if it differs from configured home venue
+    // Show venue under home team pill:
+    // - If no dominant home venue (homeVenue empty): always show
+    // - If dominant home venue set: only show when different
     const gameVenue = f.venue || '';
-    const showVenue = gameVenue && gameVenue !== homeVenue;
-    const leftVenue  = showVenue ? gameVenue : '';
-    const rightVenue = '';  // never show venue under away team pill
+    const showVenue = gameVenue && (!homeVenue || gameVenue !== homeVenue);
+    const leftVenue  = f.isHome && showVenue ? gameVenue : '';
+    const rightVenue = !f.isHome && showVenue ? gameVenue : '';
 
     // Left pill - crest on LEFT, text on RIGHT
     drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
