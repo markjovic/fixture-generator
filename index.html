@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.26</span>
+    <span class="badge">Beta 0.27</span>
   </header>
 
   <!-- Left panel -->
@@ -899,10 +899,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.26] Canvas font:', testCtx.font);
-  console.log('[v0.26] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.26] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.26] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.27] Canvas font:', testCtx.font);
+  console.log('[v0.27] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.27] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.27] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1097,8 +1097,8 @@ async function renderCard() {
   // grid-template-columns: 24px 52px 1fr 38px 1fr
   const COL_RND  = 24;
   const COL_DATE = 52;
-  const COL_VS   = 38;
-  const COL_GAP  = 4;  // gap between columns (reference: gap:4px)
+  const COL_VS   = 42;  // slightly wider to fit bigger score circle
+  const COL_GAP  = 4;
   const usable   = CARD_W - PAD_X*2;
   const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS - COL_GAP*4) / 2;
 
@@ -1231,7 +1231,7 @@ async function renderCard() {
       (leftIsNorwood ? oPill : nPill)[0]);
 
     // VS circle or score if game completed
-    const vsR = 16;
+    const vsR = 18;
     const vsCX = xVS + COL_VS/2, vsCY = ry + ROW_H/2;
     const hasScore = f.homeScore !== null && f.homeScore !== undefined;
     ctx.save();
@@ -1254,15 +1254,15 @@ async function renderCard() {
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     if (hasScore) {
       // Horizontal: home | away
-      ctx.font = `700 8px "Outfit",sans-serif`;
+      ctx.font = `600 10px "Outfit",sans-serif`;
       const scoreText = f.homeScore + '-' + f.awayScore;
       // If too wide for circle, use smaller font
-      if (ctx.measureText(scoreText).width > vsR * 1.8) {
-        ctx.font = `600 7px "Outfit",sans-serif`;
+      if (ctx.measureText(scoreText).width > vsR * 1.7) {
+        ctx.font = `600 9px "Outfit",sans-serif`;
       }
       ctx.fillText(scoreText, vsCX, vsCY + 0.5);
     } else {
-      ctx.font = `500 12px "Outfit",sans-serif`;
+      ctx.font = `500 13px "Outfit",sans-serif`;
       ctx.fillText('VS', vsCX, vsCY + 0.5);
     }
     ctx.restore();
@@ -1378,7 +1378,7 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
   ctx.beginPath();
   ctx.arc(crestX + CREST_R, crestY + CREST_R, CREST_R, 0, Math.PI*2);
-  ctx.fillStyle = '#ffffff'; ctx.fill();
+  ctx.fillStyle = bgFallback || gradColors[0] || '#333'; ctx.fill();
   ctx.clip();
   if (crestImg) {
     ctx.globalCompositeOperation = 'source-over';
@@ -1434,11 +1434,13 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   }
     if (venue) {
     ctx.font = `400 9px "Outfit",sans-serif`;
-    // Venue colour: semi-transparent version of the pill text colour
-    const vr = parseInt((txtColor||'#fff').slice(1,3)||'ff',16);
-    const vg = parseInt((txtColor||'#fff').slice(3,5)||'ff',16);
-    const vb = parseInt((txtColor||'#fff').slice(5,7)||'ff',16);
-    ctx.fillStyle = `rgba(${vr},${vg},${vb},0.6)`;
+    // Venue: readable against pill bg — semi-transparent of pill text colour
+    // pillTxt is already correct contrast for the pill, just reduce opacity
+    const _vBase = txtColor || '#ffffff';
+    const _vr = parseInt(_vBase.slice(1,3),16)||255;
+    const _vg = parseInt(_vBase.slice(3,5),16)||255;
+    const _vb = parseInt(_vBase.slice(5,7),16)||255;
+    ctx.fillStyle = `rgba(${_vr},${_vg},${_vb},0.65)`;
     const venueY = lines.length > 1 ? y + h/2 + 13 : y + h/2 + 8;
     ctx.fillText(venue, textDrawX, venueY);
   }
