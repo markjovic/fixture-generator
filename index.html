@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.20</span>
+    <span class="badge">Beta 0.21</span>
   </header>
 
   <!-- Left panel -->
@@ -737,6 +737,39 @@ function parseScore(container, ourTeamEl, oppTeamEl) {
 }
 
 
+function detectTeamInfo(htmlText) {
+  // Parse: "TEAMNAME Fixture for CLUB (LEAGUE) GRADE | PlayHQ"
+  const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+  const title = doc.querySelector('title')?.textContent || '';
+
+  // Extract parts from title
+  // Format: "Norwood U12 Purple Fixture for Norwood (Eastern Football Netball League) U12 - B 2026 | PlayHQ"
+  const m = title.match(/^(.+?)\s+Fixture for\s+([^(]+?)\s*\(([^)]+)\)\s*([^|]+)/);
+  if (!m) return null;
+
+  const fullTeamName = m[1].trim();   // "Norwood U12 Purple"
+  const clubName     = m[2].trim();   // "Norwood"
+  const league       = m[3].trim();   // "Eastern Football Netball League"
+  const grade        = m[4].trim();   // "U12 - B 2026"
+
+  // Derive a display team name: strip club prefix if present
+  // "Norwood U12 Purple" → "U12 Purple 2026" (use grade year + colour)
+  // Extract year from grade: "U12 - B 2026" → "2026"
+  const yearMatch = grade.match(/(\d{4})/);
+  const year = yearMatch ? yearMatch[1] : '';
+  // Colour from full team name: last word if it's a colour
+  const colours = ['Purple','Gold','Blue','Red','Green','White','Black','Silver','Navy','Yellow','Orange'];
+  const words = fullTeamName.split(' ');
+  const colour = colours.find(c => words.includes(c)) || '';
+  // Age group from grade: "U12 - B" → "U12"
+  const ageMatch = grade.match(/U(\d+)/i);
+  const age = ageMatch ? 'U' + ageMatch[1] : '';
+  // Build display name: "U12 Purple 2026"
+  const displayName = [age, colour, year].filter(Boolean).join(' ');
+
+  return { fullTeamName, clubName, league, grade, displayName, year };
+}
+
 function parsePlayHQ(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const results = [];
@@ -844,10 +877,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.20] Canvas font:', testCtx.font);
-  console.log('[v0.20] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.20] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.20] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.21] Canvas font:', testCtx.font);
+  console.log('[v0.21] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.21] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.21] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1491,7 +1524,11 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 
 // Re-render on live changes
 ['team-name','team-sublabel','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => { if (state.generated) renderCard(); });
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    el.dataset.userEdited = 'true';
+    if (state.generated) renderCard();
+  });
 });
 document.getElementById('has-finals').addEventListener('change', () => { if (state.generated) renderCard(); });
 
@@ -1530,10 +1567,6 @@ document.getElementById('btn-print').addEventListener('click', () => {
   document.getElementById('tab-scheme').style.display = 'none';
   document.getElementById('tab-finals').style.display = 'none';
 })();
-</script>
-</body>
-</html>
-}
 
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1559,5 +1592,22 @@ document.getElementById('file-input').addEventListener('change', async e => {
     return;
   }
 
+  // Auto-detect team info from page title
+  const teamInfo = detectTeamInfo(text);
+  if (teamInfo) {
+    const nameField = document.getElementById('team-name');
+    const sublabelField = document.getElementById('team-sublabel');
+    if (nameField && !nameField.dataset.userEdited) {
+      nameField.value = teamInfo.displayName || teamInfo.fullTeamName;
+    }
+    if (sublabelField && !sublabelField.dataset.userEdited) {
+      sublabelField.value = teamInfo.league;
+    }
+  }
   processResults(results, fb);
 });
+
+
+</script>
+</body>
+</html>
