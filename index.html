@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.24</span>
+    <span class="badge">Beta 0.25</span>
   </header>
 
   <!-- Left panel -->
@@ -899,10 +899,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.24] Canvas font:', testCtx.font);
-  console.log('[v0.24] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.24] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.24] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.25] Canvas font:', testCtx.font);
+  console.log('[v0.25] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.25] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.25] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1376,13 +1376,12 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
   ctx.beginPath();
   ctx.arc(crestX + CREST_R, crestY + CREST_R, CREST_R, 0, Math.PI*2);
-  ctx.fillStyle = bgFallback || '#2a1060'; ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.fill();
   ctx.clip();
   if (crestImg) {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    const s = CREST_D * 1.05;
-    ctx.drawImage(crestImg, crestX - (s-CREST_D)/2, crestY - (s-CREST_D)/2, s, s);
+    ctx.drawImage(crestImg, crestX, crestY, CREST_D, CREST_D);
   }
   ctx.restore();
 
@@ -1433,7 +1432,7 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   }
     if (venue) {
     ctx.font = `400 9px "Outfit",sans-serif`;
-    ctx.fillStyle = 'rgba(200,185,255,0.72)';
+    ctx.fillStyle = txtColor === '#1a0858' ? 'rgba(26,8,88,0.55)' : 'rgba(255,255,255,0.55)';
     const venueY = lines.length > 1 ? y + h/2 + 13 : y + h/2 + 8;
     ctx.fillText(venue, textDrawX, venueY);
   }
