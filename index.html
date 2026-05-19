@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.30</span>
+    <span class="badge">Beta 0.32</span>
   </header>
 
   <!-- Left panel -->
@@ -651,6 +651,8 @@ function buildSchemePicker() {
       </div>`;
     opt.querySelector('input').addEventListener('change', () => {
       state.scheme = key;
+      // Mark as user-edited so auto-detect doesn't override
+      document.querySelectorAll('input[name="scheme"]').forEach(r => r.dataset.userEdited = 'true');
       if (state.generated) renderCard();
     });
     picker.appendChild(opt);
@@ -778,7 +780,7 @@ function detectTeamInfo(htmlText) {
   // Build display name: "U12 Purple 2026"
   const displayName = [age, colour, year].filter(Boolean).join(' ');
 
-  return { fullTeamName, clubName, league, grade, displayName, year };
+  return { fullTeamName, clubName, league, grade, displayName, year, colour };
 }
 
 function parsePlayHQ(html) {
@@ -930,10 +932,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.29] Canvas font:', testCtx.font);
-  console.log('[v0.29] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.29] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.29] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.32] Canvas font:', testCtx.font);
+  console.log('[v0.32] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.32] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.32] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1675,6 +1677,18 @@ document.getElementById('file-input').addEventListener('change', async e => {
       clubField.value = teamInfo.clubName;
     }
   }
+  // Auto-select colour scheme from team name
+  // Default purple; gold only if explicitly "Gold" in name
+  if (teamInfo && !document.querySelector('input[name="scheme"]')?.dataset?.userEdited) {
+    const detectedColour = (teamInfo.colour || '').toLowerCase();
+    const targetScheme = detectedColour === 'gold' ? 'gold' : 'purple';
+    const radio = document.querySelector(`input[name="scheme"][value="${targetScheme}"]`);
+    if (radio) {
+      radio.checked = true;
+      state.scheme = targetScheme;
+    }
+  }
+
   // Auto-detect home venue from fixture data
   const venueField = document.getElementById('home-venue');
   if (venueField && !venueField.dataset.userEdited) {
