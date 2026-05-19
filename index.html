@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.25</span>
+    <span class="badge">Beta 0.26</span>
   </header>
 
   <!-- Left panel -->
@@ -899,10 +899,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.25] Canvas font:', testCtx.font);
-  console.log('[v0.25] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.25] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.25] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.26] Canvas font:', testCtx.font);
+  console.log('[v0.26] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.26] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.26] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1221,12 +1221,14 @@ async function renderCard() {
     // Left pill - crest on LEFT, text on RIGHT
     drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
       leftIsNorwood ? nPill : oPill,
-      leftCrest, leftName, leftVenue, 'left', pillTxt, cg[0]);
+      leftCrest, leftName, leftVenue, 'left', pillTxt,
+      (leftIsNorwood ? nPill : oPill)[0]);
 
     // Right pill - text on LEFT, crest on RIGHT
     drawPill(ctx, xRP, ry, COL_PILL, ROW_H,
       leftIsNorwood ? oPill : nPill,
-      rightCrest, rightName, rightVenue, 'right', pillTxt, cg[0]);
+      rightCrest, rightName, rightVenue, 'right', pillTxt,
+      (leftIsNorwood ? oPill : nPill)[0]);
 
     // VS circle or score if game completed
     const vsR = 16;
@@ -1432,7 +1434,11 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   }
     if (venue) {
     ctx.font = `400 9px "Outfit",sans-serif`;
-    ctx.fillStyle = txtColor === '#1a0858' ? 'rgba(26,8,88,0.55)' : 'rgba(255,255,255,0.55)';
+    // Venue colour: semi-transparent version of the pill text colour
+    const vr = parseInt((txtColor||'#fff').slice(1,3)||'ff',16);
+    const vg = parseInt((txtColor||'#fff').slice(3,5)||'ff',16);
+    const vb = parseInt((txtColor||'#fff').slice(5,7)||'ff',16);
+    ctx.fillStyle = `rgba(${vr},${vg},${vb},0.6)`;
     const venueY = lines.length > 1 ? y + h/2 + 13 : y + h/2 + 8;
     ctx.fillText(venue, textDrawX, venueY);
   }
