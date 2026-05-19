@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.12</span>
+    <span class="badge">Beta 0.13</span>
   </header>
 
   <!-- Left panel -->
@@ -850,10 +850,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.12] Canvas font:', testCtx.font);
-  console.log('[v0.12] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.12] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.12] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.13] Canvas font:', testCtx.font);
+  console.log('[v0.13] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.13] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.13] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1199,12 +1199,14 @@ async function renderCard() {
     ctx.fillStyle = vsCol;
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     if (hasScore) {
-      // Home score top, away score bottom (home team is always left pill)
-      ctx.font = `700 9px "Outfit",sans-serif`;
-      ctx.fillText(String(f.homeScore), vsCX, vsCY - 5);
-      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(vsCX-10, vsCY-0.5, 20, 1);
-      ctx.fillStyle = vsCol;
-      ctx.fillText(String(f.awayScore), vsCX, vsCY + 6);
+      // Horizontal: home | away
+      ctx.font = `700 8px "Outfit",sans-serif`;
+      const scoreText = f.homeScore + ' | ' + f.awayScore;
+      // If too wide for circle, use smaller font
+      if (ctx.measureText(scoreText).width > vsR * 1.8) {
+        ctx.font = `600 7px "Outfit",sans-serif`;
+      }
+      ctx.fillText(scoreText, vsCX, vsCY + 0.5);
     } else {
       ctx.font = `500 12px "Outfit",sans-serif`;
       ctx.fillText('VS', vsCX, vsCY + 0.5);
@@ -1385,14 +1387,14 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   } else {
     // Two lines centred in pill, shifted up to leave room for venue
     const totalH = lineH * 2;
-    const blockCentreY = hasVenue ? y + h/2 - 6 : y + h/2;
+    const blockCentreY = hasVenue ? y + h/2 - 9 : y + h/2;
     ctx.fillText(lines[0], textDrawX, blockCentreY - lineH/2);
     ctx.fillText(lines[1], textDrawX, blockCentreY + lineH/2);
   }
     if (venue) {
     ctx.font = `400 9px "Outfit",sans-serif`;
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
-    const venueY = lines.length > 1 ? y + h/2 + 9 : y + h/2 + 8;
+    const venueY = lines.length > 1 ? y + h/2 + 13 : y + h/2 + 8;
     ctx.fillText(venue, textDrawX, venueY);
   }
   ctx.restore();
