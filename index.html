@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.36</span>
+    <span class="badge">Beta 0.39</span>
   </header>
 
   <!-- Left panel -->
@@ -467,21 +467,33 @@ html, body {
         <label>Home venue <span style="font-weight:400;text-transform:none;letter-spacing:0">(auto-detected from fixture file)</span></label>
         <input type="text" id="home-venue" placeholder="e.g. Mullum Mullum Reserve">
       </div>
-      <div class="alert alert-info" style="font-size:12px;line-height:1.5">
-        The heading badge is <code>assets/badge.png</code>. Home venue is auto-detected from your fixture file, or set it in <code>config.json</code>.
-      </div>
     </div>
 
     <!-- COLOURS TAB -->
     <div class="panel-body" id="tab-scheme" style="display:none">
-      <div>
-        <span class="section-title" style="display:block;margin-bottom:12px">Kit colour scheme</span>
-        <div class="scheme-picker" id="scheme-picker">
-          <!-- populated by JS from colours.json -->
+      <p style="font-size:12px;color:var(--text3);margin-bottom:16px">
+        Colours are auto-loaded from the fixture file. You can override them here.
+        For a Gold team, swap primary and secondary.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div class="field">
+          <label>Primary colour</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="color-primary" value="#22085f" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
+            <input type="text" id="color-primary-hex" value="#22085f" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+          </div>
+        </div>
+        <div class="field">
+          <label>Secondary colour</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="color-secondary" value="#f5c800" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
+            <input type="text" id="color-secondary-hex" value="#f5c800" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+          </div>
         </div>
       </div>
-      <div class="alert alert-info" style="font-size:12px;line-height:1.5">
-        Colour schemes are stored in <code>assets/colours.json</code>. Edit that file to change colours or add new schemes.
+      <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
+      <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border)">
+        <!-- populated by JS -->
       </div>
     </div>
 
@@ -520,144 +532,22 @@ html, body {
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
       <p>Upload a fixture file and click<br><strong style="color:var(--text2)">Generate Card</strong> to preview</p>
     </div>
-    <div id="card-canvas-wrap" style="display:none">
-      <canvas id="card-canvas"></canvas>
-    </div>
-  </main>
-
-</div>
-
-<script>
-// ═══════════════════════════════════════════════════════════
-//  CONFIG LOADER
-//  Reads config.json, assets/colours.json, assets/badge.png
-//  Falls back to hardcoded defaults if files not found
-// ═══════════════════════════════════════════════════════════
-
-const DEFAULT_CONFIG = {
-  club_name: "Norwood Junior Football Club",
-  home_venue: "Mullum Mullum Reserve",
-  default_scheme: "purple"
-};
-
-const DEFAULT_COLOURS = {
-  purple: {
-    name: "Purple",
-    card_gradient: ["#22085f","#300f8a","#1a0650","#0e042e"],
-    body_bg: "#0d0530",
-    card_shadow: "rgba(80,20,200,0.55)",
-    norwood_pill_gradient: ["#5520b0","#6b35d0"],
-    opp_pill_gradient: ["#2a1470","#3a2290"],
-    date_badge_bg: "#f5c800",
-    date_badge_text: "#1a0858",
-    round_label_color: "rgba(245,200,0,0.9)",
-    vs_circle_text: "#1a0858",
-    accent_color: "#f5c800",
-    finals_line_color: "#f5c800",
-    pill_text_color: "#fff"
-  },
-  gold: {
-    name: "Gold",
-    card_gradient: ["#6b5800","#5a4800","#473800","#2e2400"],
-    body_bg: "#2a2000",
-    card_shadow: "rgba(255,220,0,0.6)",
-    norwood_pill_gradient: ["#f0d000","#ffe600"],
-    opp_pill_gradient: ["#c8a800","#b89400"],
-    date_badge_bg: "#5520b0",
-    date_badge_text: "#fff",
-    round_label_color: "rgba(255,230,0,0.95)",
-    vs_circle_text: "#1a0858",
-    accent_color: "#ffe600",
-    finals_line_color: "#7730d0",
-    pill_text_color: "#1a0858"
-  }
-};
-
-// ── State ───────────────────────────────────────────────────
-const state = {
-  config: {...DEFAULT_CONFIG},
-  colours: {...DEFAULT_COLOURS},
-  scheme: "purple",
-  badgeImg: null,       // HTMLImageElement
-  norwood_crest: null,  // HTMLImageElement — pill crest
-  crests: {},           // { "MITCHAM": HTMLImageElement, ... }
-  watermarks: {},       // { player_left, player_right, photo_centre, monogram_tr, monogram_bl }
-  rounds: [],           // parsed fixture rows
-  selected: new Set(),
-  byes: [],
-  generated: false,
-};
-
-// ── Asset loading ───────────────────────────────────────────
-async function loadJSON(path, fallback) {
-  try {
-    const r = await fetch(path);
-    if (!r.ok) throw new Error();
-    return await r.json();
-  } catch { return fallback; }
+    
+      <div style="font-size:10px;color:var(--text3)">${s.l}</div>
+    </div>`
+  ).join('');
 }
 
-async function loadImage(path) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = path;
-  });
-}
-
-async function loadAllAssets() {
-  // Config & colours
-  const [cfg, colours] = await Promise.all([
-    loadJSON('config.json', DEFAULT_CONFIG),
-    loadJSON('assets/colours.json', DEFAULT_COLOURS),
-  ]);
-  state.config = cfg;
-  state.colours = colours;
-  state.scheme = cfg.default_scheme || Object.keys(colours)[0];
-
-  // Badge & watermarks in parallel
-  const [badge, wm_pl, wm_pr, wm_ph, wm_tr, wm_bl, crestNorwood] = await Promise.all([
-    loadImage('assets/badge.png'),
-    loadImage('assets/wm_player_left.png'),
-    loadImage('assets/wm_player_right.png'),
-    loadImage('assets/wm_photo_centre.png'),
-    loadImage('assets/wm_monogram_tr.png'),
-    loadImage('assets/wm_monogram_bl.png'),
-    loadImage('crests/NORWOOD.png'),
-  ]);
-  state.badgeImg = badge;
-  state.watermarks = { player_left: wm_pl, player_right: wm_pr, photo_centre: wm_ph, monogram_tr: wm_tr, monogram_bl: wm_bl };
-  state.norwood_crest = crestNorwood;
-
-  buildSchemePicker();
-}
-
-// ── UI builders ─────────────────────────────────────────────
 function buildSchemePicker() {
-  const picker = document.getElementById('scheme-picker');
-  picker.innerHTML = '';
-  for (const [key, scheme] of Object.entries(state.colours)) {
-    const g = scheme.card_gradient || [scheme.card_color || '#222'];
-    const swatchGrad = `linear-gradient(135deg, ${g[0]} 0%, ${g[g.length-1]} 100%)`;
-    const accentDot = scheme.accent_color || '#fff';
-    const opt = document.createElement('label');
-    opt.className = 'scheme-option';
-    opt.innerHTML = `
-      <input type="radio" name="scheme" value="${key}" ${key===state.scheme?'checked':''}>
-      <div class="scheme-card">
-        <div class="scheme-swatch" style="background:${swatchGrad};border:2px solid ${accentDot}33"></div>
-        <span class="scheme-name">${scheme.name}</span>
-      </div>`;
-    opt.querySelector('input').addEventListener('change', () => {
-      state.scheme = key;
-      // Mark as user-edited so auto-detect doesn't override
-      document.querySelectorAll('input[name="scheme"]').forEach(r => r.dataset.userEdited = 'true');
-      if (state.generated) renderCard();
-    });
-    picker.appendChild(opt);
+  // Load club colours if available
+  const clubName = document.getElementById('club-name')?.value?.trim() || '';
+  const clubColours = state.colours[clubName] || state.colours['_default'] || state.colours[Object.keys(state.colours)[0]];
+  if (clubColours) {
+    setColours(clubColours.primary, clubColours.secondary);
   }
+  updateColourPreview();
 }
+
 
 // ── Parse PlayHQ ────────────────────────────────────────────
 const MONTH_MAP = {January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12};
@@ -781,9 +671,10 @@ function detectTeamInfo(htmlText) {
   // For merged teams like "Norwood Gold/Heathmont U12",
   // strip the club prefix and age suffix to get the team descriptor
   const teamDescriptor = fullTeamName
-    .replace(new RegExp('^' + clubName + '\\s*', 'i'), '')  // remove club prefix
-    .replace(/\s+U\d+.*$/i, '')  // remove age suffix
-    .trim();  // e.g. "Gold/Heathmont"
+    .replace(new RegExp('^' + clubName + '\s*', 'i'), '')  // remove club prefix
+    .replace(/^U\d+\s*/i, '')   // remove leading age group (e.g. "U12 Purple" → "Purple")
+    .replace(/\s+U\d+.*$/i, '') // remove trailing age group
+    .trim();  // e.g. "Purple", "Gold/Heathmont"
   const displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
 
   return { fullTeamName, clubName, league, grade, displayName, year, colour };
@@ -945,11 +836,11 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.36] Canvas font:', testCtx.font);
-  console.log('[v0.36] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.36] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.36] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
-  const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
+  console.log('[v0.39] Canvas font:', testCtx.font);
+  console.log('[v0.39] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.39] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.39] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
   const clubName = document.getElementById('club-name')?.value.trim() || state.config.club_name || 'Club Name';
@@ -988,7 +879,7 @@ async function renderCard() {
   ctx.scale(SCALE, SCALE);
 
   // ── Card background gradient ──
-  const cg = scheme.card_gradient || ['#22085f','#300f8a','#1a0650','#0e042e'];
+  const cg = [_p, darken(_p,0.1), darken(_p,0.25), darken(_p,0.45)];
   const grad = ctx.createLinearGradient(CARD_W*0.3, 0, CARD_W*0.7, CARD_H);
   grad.addColorStop(0,   cg[0]);
   grad.addColorStop(0.3, cg[1]||cg[0]);
@@ -1086,7 +977,7 @@ async function renderCard() {
   ctx.globalAlpha = 1;
 
   // ── Header ──
-  const ac = scheme.accent_color || '#f5c800';
+  const ac = _s;
   let hx = PAD_X, hy = PAD_TOP;
 
   if (state.badgeImg) {
@@ -1153,13 +1044,13 @@ async function renderCard() {
   const usable   = CARD_W - PAD_X*2;
   const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS - COL_GAP*4) / 2;
 
-  const dbBg  = scheme.date_badge_bg   || '#f5c800';
-  const dbTxt = scheme.date_badge_text || '#1a0858';
-  const rlCol = scheme.round_label_color || ac;
-  const vsCol = scheme.vs_circle_text  || '#1a0858';
-  const nPill = scheme.norwood_pill_gradient || ['#5520b0','#6b35d0'];
-  const oPill = scheme.opp_pill_gradient     || ['#2a1470','#3a2290'];
-  const pillTxt = scheme.pill_text_color || '#fff';
+  const dbBg  = _s;
+  const dbTxt = bestText(_s);
+  const rlCol = _s;
+  const vsCol = bestText('#ffffff');
+  const nPill = [lighten(_p,0.18), lighten(_p,0.25)];
+  const oPill = [lighten(_p,0.06), lighten(_p,0.12)];
+  const pillTxt = bestText(lighten(_p,0.18));
 
   let ry = PAD_TOP + HEADER_H + BETWEEN;
   const rx = PAD_X;
@@ -1551,6 +1442,7 @@ function processResults(results, fb) {
   const byeNote = byeCount > 0 ? ` · ${byeCount} bye week${byeCount>1?'s':''} detected` : '';
   fb.innerHTML = `<div class="alert alert-success">${results.length} round${results.length!==1?'s':''} imported${byeNote}</div>`;
   document.getElementById('round-section').style.display = 'block';
+  document.getElementById('empty-state').style.display = 'none';
   buildRoundList();
   updateGenerateButton();
 }
@@ -1601,6 +1493,36 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 });
 
 // Re-render on live changes
+// Colour picker wiring
+['color-primary', 'color-secondary'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    const hexId = id + '-hex';
+    const hexEl = document.getElementById(hexId);
+    if (hexEl) hexEl.value = el.value;
+    updateColourPreview();
+    if (state.generated) renderCard();
+  });
+});
+['color-primary-hex', 'color-secondary-hex'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(el.value)) return;
+    const pickerId = id.replace('-hex', '');
+    const picker = document.getElementById(pickerId);
+    if (picker) picker.value = el.value;
+    updateColourPreview();
+    if (state.generated) renderCard();
+  });
+});
+document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
+  const p = document.getElementById('color-primary').value;
+  const s = document.getElementById('color-secondary').value;
+  setColours(s, p);
+});
+
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -1615,7 +1537,7 @@ document.getElementById('btn-png').addEventListener('click', () => {
   const canvas = document.getElementById('card-canvas');
   const a = document.createElement('a');
   const teamName = document.getElementById('team-name').value.trim().replace(/\s+/g,'_').toLowerCase() || 'fixture_card';
-  a.download = `${teamName}_${state.scheme}.png`;
+  a.download = `${teamName.replace(/\s+/g,"_").toLowerCase()}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 });
@@ -1694,18 +1616,19 @@ document.getElementById('file-input').addEventListener('change', async e => {
     if (clubField && !clubField.dataset.userEdited && !clubField.value) {
       clubField.value = teamInfo.clubName;
     }
+    // Auto-load club colours
+    const detectedClub = teamInfo.clubName || '';
+    const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
+    const clubC = state.colours[detectedClub] || state.colours['_default'];
+    if (clubC) {
+      const primary   = isGold ? clubC.secondary : clubC.primary;
+      const secondary = isGold ? clubC.primary   : clubC.secondary;
+      setColours(primary, secondary);
+    }
   }
   // Auto-select colour scheme from team name
   // Default purple; gold only if explicitly "Gold" in name
-  if (teamInfo && !document.querySelector('input[name="scheme"]')?.dataset?.userEdited) {
-    const detectedColour = (teamInfo.colour || '').toLowerCase();
-    const targetScheme = detectedColour === 'gold' ? 'gold' : 'purple';
-    const radio = document.querySelector(`input[name="scheme"][value="${targetScheme}"]`);
-    if (radio) {
-      radio.checked = true;
-      state.scheme = targetScheme;
-    }
-  }
+
 
   // Auto-detect home venue from fixture data
   // Always update from fixture file (overrides config default)
