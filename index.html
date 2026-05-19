@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.14</span>
+    <span class="badge">Beta 0.16</span>
   </header>
 
   <!-- Left panel -->
@@ -422,12 +422,22 @@ html, body {
 
     <!-- FIXTURES TAB -->
     <div class="panel-body" id="tab-fixtures">
-      <div class="alert alert-info">
-        In PlayHQ, open your team's fixture page. Use <strong>File → Save Page As → Webpage, Complete</strong>. Upload the saved .html file below.
+
+      <!-- GameDay URL input -->
+      <div class="field">
+        <label>GameDay Season Fixture URL</label>
+        <input type="text" id="gameday-url" placeholder="https://websites.mygameday.app/team_info.cgi?c=...&a=SFIX" style="font-size:12px">
+      </div>
+      <button class="btn-sm" id="btn-fetch" style="width:100%;padding:9px;margin-top:4px;background:var(--accent-dim);border:1px solid rgba(124,77,255,0.4);border-radius:var(--border-radius-md);color:#c4b5fd;cursor:pointer;font-weight:600;font-size:13px">Fetch Fixtures from GameDay</button>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--text3);font-size:12px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span>or</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
 
       <div class="field">
-        <label>PlayHQ fixture file</label>
+        <label>Upload saved PlayHQ file (.html)</label>
         <input type="file" id="file-input" accept=".html,.htm">
       </div>
 
@@ -442,12 +452,18 @@ html, body {
           </div>
         </div>
         <div class="round-list" id="round-list"></div>
-
         <div style="margin-top:12px;text-align:right">
           <button class="btn-sm" id="btn-add-bye">+ Add bye week</button>
         </div>
       </div>
+
+      <div id="empty-state" style="padding:32px 20px;text-align:center;border:0.5px dashed var(--border-tertiary, var(--border));border-radius:var(--radius-lg);color:var(--text3)">
+        <p style="font-size:14px;margin-bottom:6px">No fixtures loaded</p>
+        <p style="font-size:12px">Enter a GameDay URL above or upload a PlayHQ file</p>
+      </div>
     </div>
+
+    <!-- TEAM TAB
 
     <!-- TEAM TAB -->
     <div class="panel-body" id="tab-team" style="display:none">
@@ -479,10 +495,30 @@ html, body {
 
     <!-- FINALS TAB -->
     <div class="panel-body" id="tab-finals" style="display:none">
-      <div class="field" style="flex-direction:row;align-items:center;gap:10px">
-        <input type="checkbox" id="has-finals" checked style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+      <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <input type="checkbox" id="has-finals" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
         <label for="has-finals" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;cursor:pointer;color:var(--text)">Include finals block</label>
       </div>
+      <div id="finals-fields">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Leave a field empty to hide that week.</p>
+        <div class="field">
+          <label>Week 1 Finals</label>
+          <input type="text" id="finals-w1" value="9/8" placeholder="e.g. 9/8">
+        </div>
+        <div class="field">
+          <label>Week 2 Finals</label>
+          <input type="text" id="finals-w2" value="16/8" placeholder="e.g. 16/8">
+        </div>
+        <div class="field">
+          <label>Week 3 Finals</label>
+          <input type="text" id="finals-w3" placeholder="e.g. 23/8 (optional)">
+        </div>
+        <div class="field">
+          <label>Grand Final</label>
+          <input type="text" id="finals-gf" value="30/8" placeholder="e.g. 30/8">
+        </div>
+      </div>
+    </div>
       <div id="finals-fields">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="field">
@@ -714,6 +750,70 @@ function detectByeWeeks(fixtures) {
   return byes;
 }
 
+function parseGameDay(htmlText, homeVenue) {
+  const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+  const results = [];
+  const homeVenueLower = (homeVenue || '').toLowerCase();
+
+  // Find the season fixture table
+  const rows = doc.querySelectorAll('table tr');
+  rows.forEach(row => {
+    const cells = Array.from(row.querySelectorAll('td'));
+    if (cells.length < 8) return;
+    // Expected: RND | DATE | TIME | VENUE | OUR_SCORE | blank | OPPONENT | OPP_SCORE | View
+    const rnd = cells[0].textContent.trim();
+    const dateRaw = cells[1].textContent.trim();
+    const time = cells[2].textContent.trim();
+    const venue = cells[3].textContent.trim();
+    const ourScoreRaw = cells[4].textContent.trim();
+    const opponent = cells[6].textContent.trim();
+    const oppScoreRaw = cells[7].textContent.trim();
+
+    // Validate: RND must be a number
+    if (!/^\d+$/.test(rnd)) return;
+
+    // Parse date: "17/05/26 (Sun)" → "17/5"
+    const dateMatch = dateRaw.match(/(\d+)\/(\d+)\/\d+/);
+    if (!dateMatch) return;
+    const date = `${parseInt(dateMatch[1])}/${parseInt(dateMatch[2])}`;
+
+    // Parse time: "11:30" → keep as is, convert to 24h if needed
+    const timeFmt = time.replace(/\s*(AM|PM)$/i, m => {
+      // already 24h in GameDay
+      return '';
+    }).trim();
+
+    // Determine home/away from venue
+    const isHome = homeVenueLower ? venue.toLowerCase().includes(homeVenueLower.split(' ')[0].toLowerCase()) : false;
+
+    // Parse scores: "7.3-45" format
+    function parseGDScore(s) {
+      const m = s.match(/(\d+)\.(\d+)-(\d+)/);
+      return m ? parseInt(m[3]) : null;
+    }
+    const ourScore = parseGDScore(ourScoreRaw);
+    const oppScore = parseGDScore(oppScoreRaw);
+    const hasScore = ourScore !== null;
+
+    // Clean opponent name (remove age group suffix)
+    const oppClean = opponent.replace(/\s+U\d+.*$/i, '').trim();
+
+    results.push({
+      type: 'fixture',
+      round: 'R' + rnd,
+      date,
+      time: timeFmt,
+      opponent: oppClean + (opponent.match(/\s+(U\d+.*)$/i)?.[1] || ''),
+      venue: isHome ? venue : venue, // keep full venue
+      isHome,
+      homeScore: hasScore ? (isHome ? ourScore : oppScore) : null,
+      awayScore: hasScore ? (isHome ? oppScore : ourScore) : null,
+      weWon: hasScore ? ourScore > oppScore : null,
+    });
+  });
+  return results;
+}
+
 function parseScore(container, ourTeamEl, oppTeamEl) {
   // Only parse completed games (have "Final" text)
   if (!/Final/.test(container.textContent)) return null;
@@ -850,10 +950,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.14] Canvas font:', testCtx.font);
-  console.log('[v0.14] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.14] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.14] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.16] Canvas font:', testCtx.font);
+  console.log('[v0.16] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.16] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.16] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -872,7 +972,7 @@ async function renderCard() {
   const HEADER_H = 96;
   const ROW_H = 50, ROW_GAP = 4;
   const BYE_H = 28;
-  const FINALS_H = hasFinals ? 72 : 0;
+  const FINALS_H = hasFinals ? 68 : 0;
   const BETWEEN = 12; // gap between header and rows
 
   // Calculate total height
@@ -1219,11 +1319,10 @@ async function renderCard() {
 
   // ── Finals ──
   if (hasFinals) {
-    const w1 = document.getElementById('finals-w1').value;
-    const w2 = document.getElementById('finals-w2').value;
-    const hasW3 = document.getElementById('has-w3')?.checked;
-    const w3 = document.getElementById('finals-w3')?.value || '';
-    const gf = document.getElementById('finals-gf').value;
+    const w1 = (document.getElementById('finals-w1')?.value || '').trim();
+    const w2 = (document.getElementById('finals-w2')?.value || '').trim();
+    const w3 = (document.getElementById('finals-w3')?.value || '').trim();
+    const gf = (document.getElementById('finals-gf')?.value || '').trim();
 
     // Finals — spans pills section only, matching reference layout
     const fxStart = xLP_outer;
@@ -1258,25 +1357,29 @@ async function renderCard() {
 
     // Row 1: Week 1 | divider | Week 2
     const fRow1Y = ry + 7;
-    if (hasW3) {
-      // 3 items: W1 | W2 | W3
-      const third = (fxEnd - fxStart) / 3;
-      drawFItem(fxStart + third*0 + third/2, w1, 'Week 1', fRow1Y);
-      ctx.font = `300 16px Arial`; ctx.fillStyle = 'rgba(245,200,0,0.45)'; ctx.textAlign = 'center';
-      ctx.fillText('|', fxStart + third, fRow1Y);
-      drawFItem(fxStart + third + third/2, w2, 'Week 2', fRow1Y);
-      ctx.fillText('|', fxStart + third*2, fRow1Y);
-      drawFItem(fxStart + third*2 + third/2, w3, 'Week 3', fRow1Y);
-    } else {
-      drawFItem(fxStart + (fxMid - fxStart)/2, w1, 'Week 1 Finals', fRow1Y);
-      ctx.font = `300 16px Arial`;
-      ctx.fillStyle = 'rgba(245,200,0,0.45)';
-      ctx.textAlign = 'center';
-      ctx.fillText('|', fxMid, fRow1Y);
-      drawFItem(fxMid + (fxEnd - fxMid)/2, w2, 'Week 2 Finals', fRow1Y);
+    // Build list of non-empty weeks
+    const finWeeks = [
+      w1 && {date: w1, label: 'Week 1 Finals'},
+      w2 && {date: w2, label: 'Week 2 Finals'},
+      w3 && {date: w3, label: 'Week 3 Finals'},
+    ].filter(Boolean);
+
+    if (finWeeks.length > 0) {
+      const segW = (fxEnd - fxStart) / finWeeks.length;
+      finWeeks.forEach((wk, idx) => {
+        const cx = fxStart + segW * idx + segW / 2;
+        drawFItem(cx, wk.date, wk.label, fRow1Y);
+        if (idx < finWeeks.length - 1) {
+          ctx.font = `300 16px Arial`;
+          ctx.fillStyle = 'rgba(245,200,0,0.45)';
+          ctx.textAlign = 'center';
+          ctx.fillText('|', fxStart + segW * (idx + 1), fRow1Y);
+        }
+      });
     }
+
     ry += 20;
-    drawFItem(fxStart + (fxEnd - fxStart)/2, gf, 'Grand Final', ry + 7);
+    if (gf) drawFItem(fxStart + (fxEnd - fxStart)/2, gf, 'Grand Final', ry + 7);
   }
 
 
@@ -1408,30 +1511,8 @@ function addAlpha(hex, alpha) {
 //  EVENT WIRING
 // ═══════════════════════════════════════════════════════════
 
-// Tab switching
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const tabId = btn.dataset.tab;
-    ['fixtures','team','scheme','finals'].forEach(t => {
-      document.getElementById(`tab-${t}`).style.display = t===tabId ? 'flex' : 'none';
-    });
-  });
-});
-
-// File input
-document.getElementById('file-input').addEventListener('change', async e => {
-  const file = e.target.files[0]; if (!file) return;
-  const fb = document.getElementById('parse-feedback');
-  const text = await file.text();
-  const results = parsePlayHQ(text);
-  if (!results.length) {
-    fb.innerHTML = '<div class="alert alert-error">No fixtures found. Make sure you saved the PlayHQ page as <strong>Webpage, Complete</strong>.</div>';
-    document.getElementById('round-section').style.display = 'none';
-    return;
-  }
-
+// Shared results processing for both GameDay fetch and PlayHQ file upload
+function processResults(results, fb) {
   // Auto-detect bye weeks from gap weeks in the schedule
   const autoByes = detectByeWeeks(results);
 
@@ -1468,6 +1549,30 @@ document.getElementById('file-input').addEventListener('change', async e => {
   document.getElementById('round-section').style.display = 'block';
   buildRoundList();
   updateGenerateButton();
+}
+
+// GameDay URL fetch handler
+document.getElementById('btn-fetch').addEventListener('click', async () => {
+  const url = document.getElementById('gameday-url').value.trim();
+  if (!url) return;
+  const fb = document.getElementById('parse-feedback');
+  fb.innerHTML = '<div class="alert alert-info">Fetching from GameDay…</div>';
+  try {
+    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    const resp = await fetch(proxyUrl);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    const homeVenue = document.getElementById('home-venue')?.value || state.config.home_venue || '';
+    const results = parseGameDay(text, homeVenue);
+    if (!results.length) {
+      fb.innerHTML = '<div class="alert alert-error">No fixtures found. Make sure the URL ends with &a=SFIX</div>';
+      return;
+    }
+    processResults(results, fb);
+  } catch(err) {
+    console.error('GameDay fetch error:', err);
+    fb.innerHTML = '<div class="alert alert-error">Could not fetch from GameDay: ' + err.message + '</div>';
+  }
 });
 
 // Select all / deselect all
@@ -1494,10 +1599,7 @@ document.getElementById('btn-add-bye').addEventListener('click', () => {
 document.getElementById('has-finals').addEventListener('change', e => {
   document.getElementById('finals-fields').style.display = e.target.checked ? 'block' : 'none';
 });
-document.getElementById('has-w3').addEventListener('change', e => {
-  document.getElementById('w3-field').style.display = e.target.checked ? 'block' : 'none';
-  if (state.generated) renderCard();
-});
+
 
 // Generate
 document.getElementById('btn-generate').addEventListener('click', async () => {
@@ -1561,3 +1663,31 @@ document.getElementById('btn-print').addEventListener('click', () => {
 </script>
 </body>
 </html>
+}
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tabId = btn.dataset.tab;
+    ['fixtures','team','scheme','finals'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = t===tabId ? 'flex' : 'none';
+    });
+  });
+});
+
+// File input
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const fb = document.getElementById('parse-feedback');
+  const text = await file.text();
+  const results = parsePlayHQ(text);
+  if (!results.length) {
+    fb.innerHTML = '<div class="alert alert-error">No fixtures found. Make sure you saved the PlayHQ page as <strong>Webpage, Complete</strong>.</div>';
+    document.getElementById('round-section').style.display = 'none';
+    return;
+  }
+
+  processResults(results, fb);
+});
