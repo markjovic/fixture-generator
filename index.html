@@ -715,16 +715,26 @@ function detectByeWeeks(fixtures) {
 }
 
 function parseScore(container, ourTeamEl, oppTeamEl) {
-  const text = container.textContent || '';
-  if (!/\bFinal\b/.test(text)) return null;
-  // PlayHQ format: "HomeTeam TOTAL G.B Final AwayTeam TOTAL G.B"
-  const m = text.match(/(\d+)\s+\d+\.\d+\s+Final.*?(\d+)\s+\d+\.\d+/);
-  if (!m) return null;
-  const homeScore = parseInt(m[1]);
-  const awayScore = parseInt(m[2]);
-  // Determine if Norwood (ourTeam) won
+  // Only parse completed games (have "Final" text)
+  if (!/Final/.test(container.textContent)) return null;
+  // Find score pairs: <span>TOTAL</span><span>GOALS.BEHINDS</span>
+  // These appear as adjacent spans in the PlayHQ DOM
+  const spans = Array.from(container.querySelectorAll('span'));
+  const scorePairs = [];
+  for (let i = 0; i < spans.length - 1; i++) {
+    const a = spans[i].textContent.trim();
+    const b = spans[i+1].textContent.trim();
+    if (/^\d+$/.test(a) && /^\d+\.\d+$/.test(b)) {
+      scorePairs.push(parseInt(a));
+    }
+  }
+  if (scorePairs.length < 2) return null;
+  const homeScore = scorePairs[0];
+  const awayScore = scorePairs[1];
+  // Determine if our team won
   const ourName = ourTeamEl ? ourTeamEl.textContent.trim() : '';
-  const ourIdx = text.indexOf(ourName);
+  const text = container.textContent;
+  const ourIdx = text.indexOf(ourName.split(' ')[0]); // use first word to find position
   const finalIdx = text.indexOf('Final');
   const ourIsHome = ourIdx < finalIdx;
   const ourScore = ourIsHome ? homeScore : awayScore;
@@ -1367,22 +1377,22 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
     return [t.slice(0, -1) + '…'];
   }
   const lines = wrapPillText(ctx, name, textAreaW);
-  const lineH = 16;
+  const lineH = 14; // tighter line height for two-line case
   const hasVenue = !!venue;
   if (lines.length === 1) {
     const nameY = hasVenue ? y + h/2 - 7 : y + h/2;
     ctx.fillText(lines[0], textDrawX, nameY);
   } else {
-    // Two lines: stack them centred, shift up slightly if venue shown
+    // Two lines centred in pill, shifted up to leave room for venue
     const totalH = lineH * 2;
-    const startY = hasVenue ? y + h/2 - totalH/2 - 6 : y + h/2 - totalH/2 + lineH/2;
-    ctx.fillText(lines[0], textDrawX, startY);
-    ctx.fillText(lines[1], textDrawX, startY + lineH);
+    const blockCentreY = hasVenue ? y + h/2 - 6 : y + h/2;
+    ctx.fillText(lines[0], textDrawX, blockCentreY - lineH/2);
+    ctx.fillText(lines[1], textDrawX, blockCentreY + lineH/2);
   }
     if (venue) {
     ctx.font = `400 9px "Outfit",sans-serif`;
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
-    const venueY = lines.length > 1 ? y + h/2 + 10 : y + h/2 + 8;
+    const venueY = lines.length > 1 ? y + h/2 + 9 : y + h/2 + 8;
     ctx.fillText(venue, textDrawX, venueY);
   }
   ctx.restore();
