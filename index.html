@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.35</span>
+    <span class="badge">Beta 0.36</span>
   </header>
 
   <!-- Left panel -->
@@ -936,7 +936,7 @@ const CARD_W = 560, CARD_H_BASE = 800; // will expand for rows
 const SCALE = 2; // retina
 const CORNER = 20;
 const ROW_H = 54;
-const HEADER_H = 100;
+const HEADER_H = 108;
 const FOOTER_H = 80; // finals block
 const PAD_X = 24, PAD_Y = 24;
 
@@ -945,10 +945,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.35] Canvas font:', testCtx.font);
-  console.log('[v0.35] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.35] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.35] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.36] Canvas font:', testCtx.font);
+  console.log('[v0.36] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.36] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.36] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1137,6 +1137,11 @@ async function renderCard() {
     ctx.font = `400 12px "Outfit",sans-serif`;
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.fillText(sublabel.toUpperCase(), hx, hy + nameSize + 22);
+  }
+  if (homeVenue) {
+    ctx.font = `400 11px "Outfit",sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillText(homeVenue, hx, hy + nameSize + 36);
   }
 
   // ── Grid layout constants (match reference) ──
