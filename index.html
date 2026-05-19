@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.28</span>
+    <span class="badge">Beta 0.29</span>
   </header>
 
   <!-- Left panel -->
@@ -857,7 +857,7 @@ async function getCrest(playhqName) {
   // Check cache
   if (state.crests[key]) return state.crests[key];
   // Try to load from crests folder
-  const img = await loadImage(`crests/${key}.png`);
+  const img = await loadImage(`crests/${encodeURIComponent(key)}.png`);
   if (img) { state.crests[key] = img; return img; }
   // Word-overlap fallback: find any crest key where all words appear in cleaned
   for (const fname of Object.keys(state.crests)) {
@@ -933,10 +933,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.28] Canvas font:', testCtx.font);
-  console.log('[v0.28] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.28] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.28] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.29] Canvas font:', testCtx.font);
+  console.log('[v0.29] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.29] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.29] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
