@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.9</span>
+    <span class="badge">Beta 0.11</span>
   </header>
 
   <!-- Left panel -->
@@ -840,10 +840,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.9] Canvas font:', testCtx.font);
-  console.log('[v0.9] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.9] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.9] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v1.0] Canvas font:', testCtx.font);
+  console.log('[v1.0] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v1.0] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v1.0] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1344,18 +1344,46 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
   ctx.fillStyle = txtColor || '#fff';
   ctx.textBaseline = 'middle';
   ctx.textAlign = textAlign;
-  const nameY = venue ? y + h/2 - 7 : y + h/2;
-  // Truncate with ellipsis if too wide
-  let displayName = name;
-  while (ctx.measureText(displayName).width > textAreaW && displayName.length > 2) {
-    displayName = displayName.slice(0, -1);
+  // Word-wrap: try fitting on one line, then two lines
+  function wrapPillText(ctx, text, maxW) {
+    if (ctx.measureText(text).width <= maxW) return [text];
+    const words = text.split(' ');
+    // Try splitting into two lines at each word boundary
+    let best = null, bestDiff = Infinity;
+    for (let i = 1; i < words.length; i++) {
+      const line1 = words.slice(0, i).join(' ');
+      const line2 = words.slice(i).join(' ');
+      const w1 = ctx.measureText(line1).width;
+      const w2 = ctx.measureText(line2).width;
+      if (w1 <= maxW && w2 <= maxW) {
+        const diff = Math.abs(w1 - w2);
+        if (diff < bestDiff) { bestDiff = diff; best = [line1, line2]; }
+      }
+    }
+    if (best) return best;
+    // Still doesn't fit — truncate first line with ellipsis
+    let t = text;
+    while (ctx.measureText(t).width > maxW && t.length > 2) t = t.slice(0, -1);
+    return [t.slice(0, -1) + '…'];
   }
-  if (displayName !== name) displayName = displayName.slice(0, -1) + '…';
-  ctx.fillText(displayName, textDrawX, nameY);
-  if (venue) {
+  const lines = wrapPillText(ctx, name, textAreaW);
+  const lineH = 16;
+  const hasVenue = !!venue;
+  if (lines.length === 1) {
+    const nameY = hasVenue ? y + h/2 - 7 : y + h/2;
+    ctx.fillText(lines[0], textDrawX, nameY);
+  } else {
+    // Two lines: stack them centred, shift up slightly if venue shown
+    const totalH = lineH * 2;
+    const startY = hasVenue ? y + h/2 - totalH/2 - 4 : y + h/2 - totalH/2 + lineH/2;
+    ctx.fillText(lines[0], textDrawX, startY);
+    ctx.fillText(lines[1], textDrawX, startY + lineH);
+  }
+    if (venue) {
     ctx.font = `400 9px "Outfit",sans-serif`;
     ctx.fillStyle = 'rgba(200,185,255,0.72)';
-    ctx.fillText(venue, textDrawX, y + h/2 + 7);
+    const venueY = lines.length > 1 ? y + h - 8 : y + h/2 + 8;
+    ctx.fillText(venue, textDrawX, venueY);
   }
   ctx.restore();
 }
