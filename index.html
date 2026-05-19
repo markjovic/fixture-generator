@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.16</span>
+    <span class="badge">Beta 0.20</span>
   </header>
 
   <!-- Left panel -->
@@ -422,27 +422,14 @@ html, body {
 
     <!-- FIXTURES TAB -->
     <div class="panel-body" id="tab-fixtures">
-
-      <!-- GameDay URL input -->
-      <div class="field">
-        <label>GameDay Season Fixture URL</label>
-        <input type="text" id="gameday-url" placeholder="https://websites.mygameday.app/team_info.cgi?c=...&a=SFIX" style="font-size:12px">
+      <div class="alert alert-info" style="margin-bottom:4px">
+        In PlayHQ, open your team fixture page then <strong>File → Save Page As → Webpage, Complete</strong>. Upload the saved .html file below.
       </div>
-      <button class="btn-sm" id="btn-fetch" style="width:100%;padding:9px;margin-top:4px;background:var(--accent-dim);border:1px solid rgba(124,77,255,0.4);border-radius:var(--border-radius-md);color:#c4b5fd;cursor:pointer;font-weight:600;font-size:13px">Fetch Fixtures from GameDay</button>
-
-      <div style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--text3);font-size:12px">
-        <div style="flex:1;height:1px;background:var(--border)"></div>
-        <span>or</span>
-        <div style="flex:1;height:1px;background:var(--border)"></div>
-      </div>
-
       <div class="field">
-        <label>Upload saved PlayHQ file (.html)</label>
+        <label>Upload PlayHQ fixture .html file</label>
         <input type="file" id="file-input" accept=".html,.htm">
       </div>
-
       <div id="parse-feedback"></div>
-
       <div id="round-section" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span class="section-title" id="round-count-label">0 rounds</span>
@@ -456,14 +443,11 @@ html, body {
           <button class="btn-sm" id="btn-add-bye">+ Add bye week</button>
         </div>
       </div>
-
-      <div id="empty-state" style="padding:32px 20px;text-align:center;border:0.5px dashed var(--border-tertiary, var(--border));border-radius:var(--radius-lg);color:var(--text3)">
+      <div id="empty-state" style="padding:32px 20px;text-align:center;border:0.5px dashed var(--border);border-radius:var(--radius-lg);color:var(--text3)">
         <p style="font-size:14px;margin-bottom:6px">No fixtures loaded</p>
-        <p style="font-size:12px">Enter a GameDay URL above or upload a PlayHQ file</p>
+        <p style="font-size:12px">Upload your PlayHQ fixture page above</p>
       </div>
     </div>
-
-    <!-- TEAM TAB
 
     <!-- TEAM TAB -->
     <div class="panel-body" id="tab-team" style="display:none">
@@ -519,32 +503,6 @@ html, body {
         </div>
       </div>
     </div>
-      <div id="finals-fields">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div class="field">
-            <label>Week 1 Finals</label>
-            <input type="text" id="finals-w1" value="9/8" placeholder="9/8">
-          </div>
-          <div class="field">
-            <label>Week 2 Finals</label>
-            <input type="text" id="finals-w2" value="16/8" placeholder="16/8">
-          </div>
-        </div>
-        <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <input type="checkbox" id="has-w3" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
-          <label for="has-w3" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;cursor:pointer;color:var(--text)">Include Week 3 Finals</label>
-        </div>
-        <div class="field" id="w3-field" style="display:none;max-width:160px;margin-bottom:10px">
-          <label>Week 3 Finals</label>
-          <input type="text" id="finals-w3" value="23/8" placeholder="23/8">
-        </div>
-        <div class="field" style="max-width:160px">
-          <label>Grand Final</label>
-          <input type="text" id="finals-gf" value="30/8" placeholder="30/8">
-        </div>
-      </div>
-    </div>
-
 
   </aside>
 
@@ -750,70 +708,6 @@ function detectByeWeeks(fixtures) {
   return byes;
 }
 
-function parseGameDay(htmlText, homeVenue) {
-  const doc = new DOMParser().parseFromString(htmlText, 'text/html');
-  const results = [];
-  const homeVenueLower = (homeVenue || '').toLowerCase();
-
-  // Find the season fixture table
-  const rows = doc.querySelectorAll('table tr');
-  rows.forEach(row => {
-    const cells = Array.from(row.querySelectorAll('td'));
-    if (cells.length < 8) return;
-    // Expected: RND | DATE | TIME | VENUE | OUR_SCORE | blank | OPPONENT | OPP_SCORE | View
-    const rnd = cells[0].textContent.trim();
-    const dateRaw = cells[1].textContent.trim();
-    const time = cells[2].textContent.trim();
-    const venue = cells[3].textContent.trim();
-    const ourScoreRaw = cells[4].textContent.trim();
-    const opponent = cells[6].textContent.trim();
-    const oppScoreRaw = cells[7].textContent.trim();
-
-    // Validate: RND must be a number
-    if (!/^\d+$/.test(rnd)) return;
-
-    // Parse date: "17/05/26 (Sun)" → "17/5"
-    const dateMatch = dateRaw.match(/(\d+)\/(\d+)\/\d+/);
-    if (!dateMatch) return;
-    const date = `${parseInt(dateMatch[1])}/${parseInt(dateMatch[2])}`;
-
-    // Parse time: "11:30" → keep as is, convert to 24h if needed
-    const timeFmt = time.replace(/\s*(AM|PM)$/i, m => {
-      // already 24h in GameDay
-      return '';
-    }).trim();
-
-    // Determine home/away from venue
-    const isHome = homeVenueLower ? venue.toLowerCase().includes(homeVenueLower.split(' ')[0].toLowerCase()) : false;
-
-    // Parse scores: "7.3-45" format
-    function parseGDScore(s) {
-      const m = s.match(/(\d+)\.(\d+)-(\d+)/);
-      return m ? parseInt(m[3]) : null;
-    }
-    const ourScore = parseGDScore(ourScoreRaw);
-    const oppScore = parseGDScore(oppScoreRaw);
-    const hasScore = ourScore !== null;
-
-    // Clean opponent name (remove age group suffix)
-    const oppClean = opponent.replace(/\s+U\d+.*$/i, '').trim();
-
-    results.push({
-      type: 'fixture',
-      round: 'R' + rnd,
-      date,
-      time: timeFmt,
-      opponent: oppClean + (opponent.match(/\s+(U\d+.*)$/i)?.[1] || ''),
-      venue: isHome ? venue : venue, // keep full venue
-      isHome,
-      homeScore: hasScore ? (isHome ? ourScore : oppScore) : null,
-      awayScore: hasScore ? (isHome ? oppScore : ourScore) : null,
-      weWon: hasScore ? ourScore > oppScore : null,
-    });
-  });
-  return results;
-}
-
 function parseScore(container, ourTeamEl, oppTeamEl) {
   // Only parse completed games (have "Final" text)
   if (!/Final/.test(container.textContent)) return null;
@@ -950,10 +844,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.16] Canvas font:', testCtx.font);
-  console.log('[v0.16] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.16] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.16] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.20] Canvas font:', testCtx.font);
+  console.log('[v0.20] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.20] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.20] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1511,7 +1405,6 @@ function addAlpha(hex, alpha) {
 //  EVENT WIRING
 // ═══════════════════════════════════════════════════════════
 
-// Shared results processing for both GameDay fetch and PlayHQ file upload
 function processResults(results, fb) {
   // Auto-detect bye weeks from gap weeks in the schedule
   const autoByes = detectByeWeeks(results);
@@ -1551,29 +1444,6 @@ function processResults(results, fb) {
   updateGenerateButton();
 }
 
-// GameDay URL fetch handler
-document.getElementById('btn-fetch').addEventListener('click', async () => {
-  const url = document.getElementById('gameday-url').value.trim();
-  if (!url) return;
-  const fb = document.getElementById('parse-feedback');
-  fb.innerHTML = '<div class="alert alert-info">Fetching from GameDay…</div>';
-  try {
-    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const text = await resp.text();
-    const homeVenue = document.getElementById('home-venue')?.value || state.config.home_venue || '';
-    const results = parseGameDay(text, homeVenue);
-    if (!results.length) {
-      fb.innerHTML = '<div class="alert alert-error">No fixtures found. Make sure the URL ends with &a=SFIX</div>';
-      return;
-    }
-    processResults(results, fb);
-  } catch(err) {
-    console.error('GameDay fetch error:', err);
-    fb.innerHTML = '<div class="alert alert-error">Could not fetch from GameDay: ' + err.message + '</div>';
-  }
-});
 
 // Select all / deselect all
 document.getElementById('btn-select-all').addEventListener('click', () => {
