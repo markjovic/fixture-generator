@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.34</span>
+    <span class="badge">Beta 0.35</span>
   </header>
 
   <!-- Left panel -->
@@ -945,15 +945,15 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.34] Canvas font:', testCtx.font);
-  console.log('[v0.34] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.34] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.34] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.35] Canvas font:', testCtx.font);
+  console.log('[v0.35] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.35] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.35] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
   const clubName = document.getElementById('club-name')?.value.trim() || state.config.club_name || 'Club Name';
-  const homeVenue = (document.getElementById('home-venue')?.value || state.config.home_venue || '').trim();
+  const homeVenue = (document.getElementById('home-venue')?.value || '').trim();
   const hasFinals = document.getElementById('has-finals').checked;
 
   const allRows = state.rounds.filter((_,i) => state.selected.has(i));
