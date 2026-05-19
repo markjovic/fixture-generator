@@ -675,7 +675,7 @@ function shortName(playhqName) {
   return playhqName.replace(/\s+U\d+(\s+\w+)?$/i,'').trim().toUpperCase();
 }
 const ALIASES = {
-  'SOUTH BELGRAVE':'STH BELGRAVE','SOUTH CROYDON':'STH CROYDON',
+  //'SOUTH BELGRAVE':'STH BELGRAVE','SOUTH CROYDON':'STH CROYDON',
   'NORTH RINGWOOD':'NTH RINGWOOD','UPPER FERNTREE GULLY':'UPPER FTG'
 };
 
@@ -829,10 +829,10 @@ const CREST_ALIASES = {
   // North/South/Upper abbreviations
   'NTH RINGWOOD':       'NORTH RINGWOOD',
   'NORTH RINGWOOD':     'NORTH RINGWOOD',
-  'STH CROYDON':        'SOUTH CROYDON',
+  //'STH CROYDON':        'SOUTH CROYDON',
   //'SOUTH CROYDON':      'SOUTH CROYDON',
   //'STH BELGRAVE':       'SOUTH BELGRAVE',
-  'SOUTH BELGRAVE':     'SOUTH BELGRAVE',
+  //'SOUTH BELGRAVE':     'SOUTH BELGRAVE',
   'UPPER FTG':          'UPPER FERNTREE GULLY',
   'UPPER FERNTREE GULLY': 'UPPER FERNTREE GULLY',
   'WANTIRNA STH':       'WANTIRNA SOUTH',
