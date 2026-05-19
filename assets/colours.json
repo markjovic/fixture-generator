@@ -1,54 +1,10 @@
 {
-  "purple": {
-    "name": "Purple",
-    "card_gradient": [
-      "#22085f",
-      "#300f8a",
-      "#1a0650",
-      "#0e042e"
-    ],
-    "body_bg": "#0d0530",
-    "card_shadow": "rgba(80,20,200,0.55)",
-    "norwood_pill_gradient": [
-      "#5520b0",
-      "#6b35d0"
-    ],
-    "opp_pill_gradient": [
-      "#2a1470",
-      "#3a2290"
-    ],
-    "date_badge_bg": "#f5c800",
-    "date_badge_text": "#1a0858",
-    "round_label_color": "rgba(245,200,0,0.9)",
-    "vs_circle_text": "#1a0858",
-    "accent_color": "#f5c800",
-    "finals_line_color": "#f5c800",
-    "pill_text_color": "#fff"
+  "_default": {
+    "primary": "#22085f",
+    "secondary": "#f5c800"
   },
-  "gold": {
-    "name": "Gold",
-    "card_gradient": [
-      "#6b5800",
-      "#5a4800",
-      "#473800",
-      "#2e2400"
-    ],
-    "body_bg": "#2a2000",
-    "card_shadow": "rgba(255,220,0,0.6)",
-    "norwood_pill_gradient": [
-      "#f0d000",
-      "#ffe600"
-    ],
-    "opp_pill_gradient": [
-      "#c8a800",
-      "#b89400"
-    ],
-    "date_badge_bg": "#5520b0",
-    "date_badge_text": "#fff",
-    "round_label_color": "rgba(255,230,0,0.95)",
-    "vs_circle_text": "#1a0858",
-    "accent_color": "#ffe600",
-    "finals_line_color": "#7730d0",
-    "pill_text_color": "#1a0858"
+  "Norwood": {
+    "primary": "#22085f",
+    "secondary": "#f5c800"
   }
 }
