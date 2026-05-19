@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.27</span>
+    <span class="badge">Beta 0.28</span>
   </header>
 
   <!-- Left panel -->
@@ -825,14 +825,48 @@ function detectHomeVenue(results) {
 }
 
 // ── Crest loader ────────────────────────────────────────────
+// Alias table: PlayHQ name variations → canonical crest filename key
+const CREST_ALIASES = {
+  // North/South/Upper abbreviations
+  'NTH RINGWOOD':       'NORTH RINGWOOD',
+  'NORTH RINGWOOD':     'NORTH RINGWOOD',
+  'STH CROYDON':        'SOUTH CROYDON',
+  'SOUTH CROYDON':      'SOUTH CROYDON',
+  'STH BELGRAVE':       'SOUTH BELGRAVE',
+  'SOUTH BELGRAVE':     'SOUTH BELGRAVE',
+  'UPPER FTG':          'UPPER FERNTREE GULLY',
+  'UPPER FERNTREE GULLY': 'UPPER FERNTREE GULLY',
+  'WANTIRNA STH':       'WANTIRNA SOUTH',
+  'CROYDON NTH':        'CROYDON NORTH',
+  // Glen Waverley Rovers → Waverley Blues
+  'GLEN WAVERLEY ROVERS': 'WAVERLEY BLUES',
+  'WAVERLEY':           'WAVERLEY BLUES',
+  // Rowville disambiguation
+  'ROWVILLE SC':        'ROWVILLE',
+  // Common abbreviations
+  'MTG':                'MONTROSE',
+  'E RINGWOOD':         'EAST RINGWOOD',
+  'E BURWOOD':          'EAST BURWOOD',
+};
+
 async function getCrest(playhqName) {
-  const cleaned = shortName(playhqName);
-  const key = ALIASES[cleaned] || cleaned;
+  // Strip age group suffix: "Chirnside Park U12 Blue" → "CHIRNSIDE PARK"
+  const cleaned = playhqName.replace(/\s+U\d+.*$/i, '').trim().toUpperCase();
+  // Resolve alias
+  const key = CREST_ALIASES[cleaned] || cleaned;
+  // Check cache
   if (state.crests[key]) return state.crests[key];
+  // Try to load from crests folder
   const img = await loadImage(`crests/${key}.png`);
-  if (img) state.crests[key] = img;
-  return img;
+  if (img) { state.crests[key] = img; return img; }
+  // Word-overlap fallback: find any crest key where all words appear in cleaned
+  for (const fname of Object.keys(state.crests)) {
+    const fwords = fname.split(' ');
+    if (fwords.every(w => cleaned.includes(w))) return state.crests[fname];
+  }
+  return null;
 }
+
 
 // ── Round list UI ────────────────────────────────────────────
 function buildRoundList() {
@@ -899,10 +933,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.27] Canvas font:', testCtx.font);
-  console.log('[v0.27] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.27] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.27] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.28] Canvas font:', testCtx.font);
+  console.log('[v0.28] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.28] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.28] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
