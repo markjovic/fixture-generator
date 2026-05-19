@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.32</span>
+    <span class="badge">Beta 0.29</span>
   </header>
 
   <!-- Left panel -->
@@ -675,8 +675,12 @@ function shortName(playhqName) {
   return playhqName.replace(/\s+U\d+(\s+\w+)?$/i,'').trim().toUpperCase();
 }
 const ALIASES = {
-  'STH BELGRAVE':'SOUTH BELGRAVE','STH CROYDON':'SOUTH CROYDON',
-  'NTH RINGWOOD':'NORTH RINGWOOD','UPPER FTG':'UPPER FERNTREE GULLY'
+  'STH BELGRAVE':       'SOUTH BELGRAVE',
+  'STH CROYDON':        'SOUTH CROYDON',
+  'NTH RINGWOOD':       'NORTH RINGWOOD',
+  'UPPER FTG':          'UPPER FERNTREE GULLY',
+  'WANTIRNA STH':       'WANTIRNA SOUTH',
+  'CROYDON NTH':        'CROYDON NORTH',
 };
 
 function detectByeWeeks(fixtures) {
@@ -826,28 +830,20 @@ function detectHomeVenue(results) {
 // ── Crest loader ────────────────────────────────────────────
 // Alias table: PlayHQ name variations → canonical crest filename key
 const CREST_ALIASES = {
-  // North/South/Upper abbreviations
-  'NTH RINGWOOD':       'NORTH RINGWOOD',
-  'NORTH RINGWOOD':     'NORTH RINGWOOD',
-  'STH CROYDON':        'SOUTH CROYDON',
-  'SOUTH CROYDON':      'SOUTH CROYDON',
-  'STH BELGRAVE':       'SOUTH BELGRAVE',
-  'SOUTH BELGRAVE':     'SOUTH BELGRAVE',
-  'UPPER FTG':          'UPPER FERNTREE GULLY',
-  'UPPER FERNTREE GULLY': 'UPPER FERNTREE GULLY',
-  'WANTIRNA STH':       'WANTIRNA SOUTH',
-  'WANTIRNA SOUTH':       'WANTIRNA SOUTH',
-  'CROYDON NORTH':        'CROYDON NORTH',
-  'CROYDON NTH':        'CROYDON NORTH',
-  // Glen Waverley Rovers → Waverley Blues
-  //'GLEN WAVERLEY ROVERS': 'WAVERLEY BLUES',
-  //'WAVERLEY':           'WAVERLEY BLUES',
-  // Rowville disambiguation
-  'ROWVILLE SC':        'ROWVILLE',
-  // Common abbreviations
-  //'MTG':                'MONTROSE',
-  'E RINGWOOD':         'EAST RINGWOOD',
-  'E BURWOOD':          'EAST BURWOOD',
+  'NTH RINGWOOD':           'NORTH RINGWOOD',
+  'NORTH RINGWOOD':         'NORTH RINGWOOD',
+  'STH CROYDON':            'SOUTH CROYDON',
+  'SOUTH CROYDON':          'SOUTH CROYDON',
+  'STH BELGRAVE':           'SOUTH BELGRAVE',
+  'SOUTH BELGRAVE':         'SOUTH BELGRAVE',
+  'UPPER FTG':              'UPPER FERNTREE GULLY',
+  'UPPER FERNTREE GULLY':   'UPPER FERNTREE GULLY',
+  'WANTIRNA STH':           'WANTIRNA SOUTH',
+  'WANTIRNA SOUTH':         'WANTIRNA SOUTH',
+  'CROYDON NORTH':          'CROYDON NORTH',
+  'CROYDON NTH':            'CROYDON NORTH',
+  'E RINGWOOD':             'EAST RINGWOOD',
+  'E BURWOOD':              'EAST BURWOOD',
 };
 
 async function getCrest(playhqName) {
