@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.38</span>
+    <span class="badge">Beta 0.36</span>
   </header>
 
   <!-- Left panel -->
@@ -474,32 +474,14 @@ html, body {
 
     <!-- COLOURS TAB -->
     <div class="panel-body" id="tab-scheme" style="display:none">
-      <p style="font-size:12px;color:var(--text3);margin-bottom:16px">
-        Colours are auto-loaded from the fixture file. You can override them here.
-        For a Gold team, swap primary and secondary.
-      </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div class="field">
-          <label>Primary colour</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="color-primary" value="#22085f" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
-            <input type="text" id="color-primary-hex" value="#22085f" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
-          </div>
-        </div>
-        <div class="field">
-          <label>Secondary colour</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="color-secondary" value="#f5c800" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
-            <input type="text" id="color-secondary-hex" value="#f5c800" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
-          </div>
+      <div>
+        <span class="section-title" style="display:block;margin-bottom:12px">Kit colour scheme</span>
+        <div class="scheme-picker" id="scheme-picker">
+          <!-- populated by JS from colours.json -->
         </div>
       </div>
-      <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
-      <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border)">
-        <!-- populated by JS -->
-      </div>
-      <div class="alert alert-info" style="font-size:12px;line-height:1.5;margin-top:12px">
-        Club colours are stored in <code>assets/colours.json</code>. Add clubs there for automatic loading.
+      <div class="alert alert-info" style="font-size:12px;line-height:1.5">
+        Colour schemes are stored in <code>assets/colours.json</code>. Edit that file to change colours or add new schemes.
       </div>
     </div>
 
@@ -632,7 +614,7 @@ async function loadAllAssets() {
   ]);
   state.config = cfg;
   state.colours = colours;
-  // scheme now derived from primary/secondary colours
+  state.scheme = cfg.default_scheme || Object.keys(colours)[0];
 
   // Badge & watermarks in parallel
   const [badge, wm_pl, wm_pr, wm_ph, wm_tr, wm_bl, crestNorwood] = await Promise.all([
@@ -652,56 +634,30 @@ async function loadAllAssets() {
 }
 
 // ── UI builders ─────────────────────────────────────────────
-function getColours() {
-  return {
-    primary:   document.getElementById('color-primary')?.value || '#22085f',
-    secondary: document.getElementById('color-secondary')?.value || '#f5c800',
-  };
-}
-
-function setColours(primary, secondary) {
-  const pEl = document.getElementById('color-primary');
-  const sEl = document.getElementById('color-secondary');
-  const pHex = document.getElementById('color-primary-hex');
-  const sHex = document.getElementById('color-secondary-hex');
-  if (pEl) pEl.value = primary;
-  if (sEl) sEl.value = secondary;
-  if (pHex) pHex.value = primary;
-  if (sHex) sHex.value = secondary;
-  updateColourPreview();
-  if (state.generated) renderCard();
-}
-
-function updateColourPreview() {
-  const { primary, secondary } = getColours();
-  const preview = document.getElementById('colour-preview');
-  if (!preview) return;
-  const swatches = [
-    { l: 'Card dark',    c: darken(primary, 0.5) },
-    { l: 'Card mid',     c: darken(primary, 0.3) },
-    { l: 'Card',         c: primary },
-    { l: 'Club pill',    c: lighten(primary, 0.18) },
-    { l: 'Opp pill',     c: lighten(primary, 0.08) },
-    { l: 'Secondary',    c: secondary },
-  ];
-  preview.innerHTML = swatches.map(s =>
-    `<div style="text-align:center">
-      <div style="width:40px;height:40px;border-radius:4px;background:${s.c};border:0.5px solid rgba(0,0,0,0.15);margin:0 auto 4px"></div>
-      <div style="font-size:10px;color:var(--text3)">${s.l}</div>
-    </div>`
-  ).join('');
-}
-
 function buildSchemePicker() {
-  // Load club colours if available
-  const clubName = document.getElementById('club-name')?.value?.trim() || '';
-  const clubColours = state.colours[clubName] || state.colours['_default'] || state.colours[Object.keys(state.colours)[0]];
-  if (clubColours) {
-    setColours(clubColours.primary, clubColours.secondary);
+  const picker = document.getElementById('scheme-picker');
+  picker.innerHTML = '';
+  for (const [key, scheme] of Object.entries(state.colours)) {
+    const g = scheme.card_gradient || [scheme.card_color || '#222'];
+    const swatchGrad = `linear-gradient(135deg, ${g[0]} 0%, ${g[g.length-1]} 100%)`;
+    const accentDot = scheme.accent_color || '#fff';
+    const opt = document.createElement('label');
+    opt.className = 'scheme-option';
+    opt.innerHTML = `
+      <input type="radio" name="scheme" value="${key}" ${key===state.scheme?'checked':''}>
+      <div class="scheme-card">
+        <div class="scheme-swatch" style="background:${swatchGrad};border:2px solid ${accentDot}33"></div>
+        <span class="scheme-name">${scheme.name}</span>
+      </div>`;
+    opt.querySelector('input').addEventListener('change', () => {
+      state.scheme = key;
+      // Mark as user-edited so auto-detect doesn't override
+      document.querySelectorAll('input[name="scheme"]').forEach(r => r.dataset.userEdited = 'true');
+      if (state.generated) renderCard();
+    });
+    picker.appendChild(opt);
   }
-  updateColourPreview();
 }
-
 
 // ── Parse PlayHQ ────────────────────────────────────────────
 const MONTH_MAP = {January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12};
@@ -825,10 +781,9 @@ function detectTeamInfo(htmlText) {
   // For merged teams like "Norwood Gold/Heathmont U12",
   // strip the club prefix and age suffix to get the team descriptor
   const teamDescriptor = fullTeamName
-    .replace(new RegExp('^' + clubName + '\s*', 'i'), '')  // remove club prefix
-    .replace(/^U\d+\s*/i, '')   // remove leading age group (e.g. "U12 Purple" → "Purple")
-    .replace(/\s+U\d+.*$/i, '') // remove trailing age group
-    .trim();  // e.g. "Purple", "Gold/Heathmont"
+    .replace(new RegExp('^' + clubName + '\\s*', 'i'), '')  // remove club prefix
+    .replace(/\s+U\d+.*$/i, '')  // remove age suffix
+    .trim();  // e.g. "Gold/Heathmont"
   const displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
 
   return { fullTeamName, clubName, league, grade, displayName, year, colour };
@@ -990,11 +945,11 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.38] Canvas font:', testCtx.font);
-  console.log('[v0.38] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.38] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.38] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
-  const { primary: _p, secondary: _s } = getColours();
+  console.log('[v0.36] Canvas font:', testCtx.font);
+  console.log('[v0.36] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.36] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.36] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  const scheme = state.colours[state.scheme] || Object.values(state.colours)[0];
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
   const clubName = document.getElementById('club-name')?.value.trim() || state.config.club_name || 'Club Name';
@@ -1033,7 +988,7 @@ async function renderCard() {
   ctx.scale(SCALE, SCALE);
 
   // ── Card background gradient ──
-  const cg = [_p, darken(_p,0.1), darken(_p,0.25), darken(_p,0.45)];
+  const cg = scheme.card_gradient || ['#22085f','#300f8a','#1a0650','#0e042e'];
   const grad = ctx.createLinearGradient(CARD_W*0.3, 0, CARD_W*0.7, CARD_H);
   grad.addColorStop(0,   cg[0]);
   grad.addColorStop(0.3, cg[1]||cg[0]);
@@ -1131,7 +1086,7 @@ async function renderCard() {
   ctx.globalAlpha = 1;
 
   // ── Header ──
-  const ac = _s;
+  const ac = scheme.accent_color || '#f5c800';
   let hx = PAD_X, hy = PAD_TOP;
 
   if (state.badgeImg) {
@@ -1198,13 +1153,13 @@ async function renderCard() {
   const usable   = CARD_W - PAD_X*2;
   const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS - COL_GAP*4) / 2;
 
-  const dbBg  = _s;
-  const dbTxt = bestText(_s);
-  const rlCol = _s;
-  const vsCol = bestText('#ffffff');
-  const nPill = [lighten(_p,0.18), lighten(_p,0.25)];
-  const oPill = [lighten(_p,0.06), lighten(_p,0.12)];
-  const pillTxt = bestText(lighten(_p,0.18));
+  const dbBg  = scheme.date_badge_bg   || '#f5c800';
+  const dbTxt = scheme.date_badge_text || '#1a0858';
+  const rlCol = scheme.round_label_color || ac;
+  const vsCol = scheme.vs_circle_text  || '#1a0858';
+  const nPill = scheme.norwood_pill_gradient || ['#5520b0','#6b35d0'];
+  const oPill = scheme.opp_pill_gradient     || ['#2a1470','#3a2290'];
+  const pillTxt = scheme.pill_text_color || '#fff';
 
   let ry = PAD_TOP + HEADER_H + BETWEEN;
   const rx = PAD_X;
@@ -1646,36 +1601,6 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 });
 
 // Re-render on live changes
-// Colour picker wiring
-['color-primary', 'color-secondary'].forEach(id => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener('input', () => {
-    const hexId = id + '-hex';
-    const hexEl = document.getElementById(hexId);
-    if (hexEl) hexEl.value = el.value;
-    updateColourPreview();
-    if (state.generated) renderCard();
-  });
-});
-['color-primary-hex', 'color-secondary-hex'].forEach(id => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener('input', () => {
-    if (!/^#[0-9a-fA-F]{6}$/.test(el.value)) return;
-    const pickerId = id.replace('-hex', '');
-    const picker = document.getElementById(pickerId);
-    if (picker) picker.value = el.value;
-    updateColourPreview();
-    if (state.generated) renderCard();
-  });
-});
-document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
-  const p = document.getElementById('color-primary').value;
-  const s = document.getElementById('color-secondary').value;
-  setColours(s, p);
-});
-
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -1690,7 +1615,7 @@ document.getElementById('btn-png').addEventListener('click', () => {
   const canvas = document.getElementById('card-canvas');
   const a = document.createElement('a');
   const teamName = document.getElementById('team-name').value.trim().replace(/\s+/g,'_').toLowerCase() || 'fixture_card';
-  a.download = `${teamName.replace(/\s+/g,"_").toLowerCase()}.png`;
+  a.download = `${teamName}_${state.scheme}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 });
@@ -1769,19 +1694,18 @@ document.getElementById('file-input').addEventListener('change', async e => {
     if (clubField && !clubField.dataset.userEdited && !clubField.value) {
       clubField.value = teamInfo.clubName;
     }
-    // Auto-load club colours
-    const detectedClub = teamInfo.clubName || '';
-    const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
-    const clubC = state.colours[detectedClub] || state.colours['_default'];
-    if (clubC) {
-      const primary   = isGold ? clubC.secondary : clubC.primary;
-      const secondary = isGold ? clubC.primary   : clubC.secondary;
-      setColours(primary, secondary);
-    }
   }
   // Auto-select colour scheme from team name
   // Default purple; gold only if explicitly "Gold" in name
-
+  if (teamInfo && !document.querySelector('input[name="scheme"]')?.dataset?.userEdited) {
+    const detectedColour = (teamInfo.colour || '').toLowerCase();
+    const targetScheme = detectedColour === 'gold' ? 'gold' : 'purple';
+    const radio = document.querySelector(`input[name="scheme"][value="${targetScheme}"]`);
+    if (radio) {
+      radio.checked = true;
+      state.scheme = targetScheme;
+    }
+  }
 
   // Auto-detect home venue from fixture data
   // Always update from fixture file (overrides config default)
