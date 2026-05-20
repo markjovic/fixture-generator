@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.48</span>
+    <span class="badge">Beta 0.49</span>
   </header>
 
   <!-- Left panel -->
@@ -614,8 +614,178 @@ const DEFAULT_CONFIG = {
 };
 
 const DEFAULT_COLOURS = {
-  "_default": { "primary": "#22085f", "secondary": "#f5c800" },
-  "Norwood":  { "primary": "#22085f", "secondary": "#f5c800" }
+  "_default": {
+    "primary": "#22085f",
+    "secondary": "#f5c800"
+  },
+  "Bayswater": {
+    "primary": "#10A050",
+    "secondary": "#F0C000"
+  },
+  "Beaconsfield": {
+    "primary": "#001030",
+    "secondary": "#F0C010"
+  },
+  "Belgrave": {
+    "primary": "#000000",
+    "secondary": "#F0F0F0"
+  },
+  "Blackburn": {
+    "primary": "#C01010",
+    "secondary": "#000000"
+  },
+  "Boronia": {
+    "primary": "#503010",
+    "secondary": "#F0D000"
+  },
+  "Chirnside Park": {
+    "primary": "#F0C000",
+    "secondary": "#000000"
+  },
+  "Coldstream": {
+    "primary": "#102030",
+    "secondary": "#F0F0F0"
+  },
+  "Croydon": {
+    "primary": "#102030",
+    "secondary": "#F0F0F0"
+  },
+  "Croydon North": {
+    "primary": "#005080",
+    "secondary": "#F0F0F0"
+  },
+  "Donvale": {
+    "primary": "#20B040",
+    "secondary": "#000000"
+  },
+  "East Burwood": {
+    "primary": "#202010",
+    "secondary": "#F0F0F0"
+  },
+  "East Ringwood": {
+    "primary": "#104080",
+    "secondary": "#F0F0F0"
+  },
+  "Endeavour Hills": {
+    "primary": "#003010",
+    "secondary": "#F0C000"
+  },
+  "Fairpark": {
+    "primary": "#E01020",
+    "secondary": "#4060A0"
+  },
+  "Ferntree Gully": {
+    "primary": "#0000C0",
+    "secondary": "#F0F0F0"
+  },
+  "Forest Hill": {
+    "primary": "#205030",
+    "secondary": "#F0F0F0"
+  },
+  "Glen Waverley Rovers": {
+    "primary": "#000000",
+    "secondary": "#F0F0F0"
+  },
+  "Heathmont": {
+    "primary": "#104080",
+    "secondary": "#F0D000"
+  },
+  "Kilsyth": {
+    "primary": "#C01010",
+    "secondary": "#000000"
+  },
+  "Knox": {
+    "primary": "#C01010",
+    "secondary": "#000000"
+  },
+  "Lilydale": {
+    "primary": "#104080",
+    "secondary": "#F0D000"
+  },
+  "Lysterfield": {
+    "primary": "#20B0D0",
+    "secondary": "#D0D0D0"
+  },
+  "Mitcham": {
+    "primary": "#F0D000",
+    "secondary": "#000000"
+  },
+  "Montrose": {
+    "primary": "#102030",
+    "secondary": "#C01010"
+  },
+  "Mooroolbark": {
+    "primary": "#106020",
+    "secondary": "#F0B010"
+  },
+  "Mt Evelyn": {
+    "primary": "#701030",
+    "secondary": "#F0F0F0"
+  },
+  "Noble Park": {
+    "primary": "#1050A0",
+    "secondary": "#F0D000"
+  },
+  "North Ringwood": {
+    "primary": "#C01010",
+    "secondary": "#000000"
+  },
+  "Norwood": {
+    "primary": "#22085f",
+    "secondary": "#f5c800"
+  },
+  "Oakleigh District": {
+    "primary": "#000000",
+    "secondary": "#F0F0F0"
+  },
+  "Ringwood": {
+    "primary": "#000000",
+    "secondary": "#F0F0F0"
+  },
+  "Rowville": {
+    "primary": "#503010",
+    "secondary": "#F0C000"
+  },
+  "Rowville Knights": {
+    "primary": "#F0F0F0",
+    "secondary": "#0090B0"
+  },
+  "South Belgrave": {
+    "primary": "#C01010",
+    "secondary": "#000000"
+  },
+  "South Croydon": {
+    "primary": "#104080",
+    "secondary": "#C01010"
+  },
+  "Templestowe": {
+    "primary": "#200050",
+    "secondary": "#F0E0F0"
+  },
+  "The Basin": {
+    "primary": "#104020",
+    "secondary": "#C01010"
+  },
+  "Upper Ferntree Gully": {
+    "primary": "#104080",
+    "secondary": "#C01010"
+  },
+  "Upwey Tecoma": {
+    "primary": "#F0D030",
+    "secondary": "#000000"
+  },
+  "Vermont": {
+    "primary": "#302050",
+    "secondary": "#F0D000"
+  },
+  "Wantirna South": {
+    "primary": "#104020",
+    "secondary": "#F0F0F0"
+  },
+  "Waverley Blues": {
+    "primary": "#102030",
+    "secondary": "#C01010"
+  }
 };
 
 // ── State ───────────────────────────────────────────────────
@@ -1029,10 +1199,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.47] Canvas font:', testCtx.font);
-  console.log('[v0.47] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.47] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.47] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.48] Canvas font:', testCtx.font);
+  console.log('[v0.48] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.48] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.48] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1817,17 +1987,11 @@ document.getElementById('file-input').addEventListener('change', async e => {
     // Auto-load club colours
     const detectedClub = teamInfo.clubName || '';
     const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
-    console.log('[colours] detectedClub:', detectedClub, 'isGold:', isGold);
-    console.log('[colours] state.colours keys:', Object.keys(state.colours));
     const clubC = state.colours[detectedClub] || state.colours['_default'];
-    console.log('[colours] clubC:', clubC);
     if (clubC) {
       const primary   = isGold ? clubC.secondary : clubC.primary;
       const secondary = isGold ? clubC.primary   : clubC.secondary;
-      console.log('[colours] calling setColours:', primary, secondary);
       setColours(primary, secondary);
-    } else {
-      console.log('[colours] NO MATCH - colours not set');
     }
     // Load club's own crest for "our team" pill
     getCrest(detectedClub).then(img => {
