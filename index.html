@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.53</span>
+    <span class="badge">Beta 0.54</span>
   </header>
 
   <!-- Left panel -->
@@ -872,7 +872,7 @@ async function loadAllAssets() {
     loadImage('assets/wm_photo_centre.png'),
     loadImage('assets/wm_monogram_tr.png'),
     loadImage('assets/wm_monogram_bl.png'),
-    loadImage('crests/NORWOOD.png'),
+    loadImage('assets/clubs/norwood/crest.png'),
   ]);
   state.watermarks = { player_left: wm_pl, player_right: wm_pr, photo_centre: wm_ph, monogram_tr: wm_tr, monogram_bl: wm_bl };
   state.norwood_crest = crestNorwood;
@@ -1157,10 +1157,11 @@ async function getCrest(playhqName) {
   const key = CREST_ALIASES[cleaned] || cleaned;
   // Check cache
   if (state.crests[key]) return state.crests[key];
-  // Try to load from crests folder
-  const img = await loadImage(`crests/${encodeURIComponent(key)}.png`);
+  // Load from assets/clubs/{slug}/crest.png
+  const slug = key.toLowerCase().replace(/\s+/g, '_');
+  const img = await loadImage(`assets/clubs/${slug}/crest.png`);
   if (img) { state.crests[key] = img; return img; }
-  // Word-overlap fallback: find any crest key where all words appear in cleaned
+  // Word-overlap fallback
   for (const fname of Object.keys(state.crests)) {
     const fwords = fname.split(' ');
     if (fwords.every(w => cleaned.includes(w))) return state.crests[fname];
@@ -2047,7 +2048,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
     }
     // Load club's own crest for "our team" pill
     getCrest(detectedClub).then(img => {
-      state.norwood_crest = img || state.norwood_crest;
+      if (img) state.norwood_crest = img;
     });
     // Load club-specific badge + monogram watermarks
     loadClubAssets(detectedClub).then(() => {
