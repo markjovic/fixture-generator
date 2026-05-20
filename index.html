@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.51</span>
+    <span class="badge">Beta 0.52</span>
   </header>
 
   <!-- Left panel -->
@@ -1027,7 +1027,7 @@ function parseScore(container, ourTeamEl, oppTeamEl) {
   const ourIsHome = ourIdx < finalIdx;
   const ourScore = ourIsHome ? homeScore : awayScore;
   const oppScore = ourIsHome ? awayScore : homeScore;
-  return { homeScore, awayScore, weWon: ourScore > oppScore };
+  return { homeScore, awayScore, weWon: ourScore === oppScore ? null : ourScore > oppScore };
 }
 
 
@@ -1586,12 +1586,25 @@ async function renderCard() {
     ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1;
     ctx.fill();
     ctx.restore();
-    // Win/loss ring
-    if (hasScore && f.weWon !== null) {
+    // Win/loss/draw ring with white outline
+    if (hasScore) {
+      const ringCol = f.weWon === null
+        ? 'rgba(251,146,60,0.95)'   // draw = orange
+        : f.weWon
+          ? 'rgba(34,197,94,0.95)'  // win = green
+          : 'rgba(239,68,68,0.95)'; // loss = red
+      // White outline ring (outermost)
       ctx.save();
-      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 2, 0, Math.PI*2);
-      ctx.strokeStyle = f.weWon ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)';
-      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 4.5, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+      // Coloured ring
+      ctx.save();
+      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 2.5, 0, Math.PI*2);
+      ctx.strokeStyle = ringCol;
+      ctx.lineWidth = 3;
       ctx.stroke();
       ctx.restore();
     }
