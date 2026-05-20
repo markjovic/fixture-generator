@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.41</span>
+    <span class="badge">Beta 0.44</span>
   </header>
 
   <!-- Left panel -->
@@ -782,6 +782,10 @@ const ALIASES = {
   'UPPER FTG':          'UPPER FERNTREE GULLY',
   'WANTIRNA STH':       'WANTIRNA SOUTH',
   'CROYDON NTH':        'CROYDON NORTH',
+  'CROYDON NORTH MLOC': 'CROYDON NORTH',
+  'UPWEY/TECOMA':       'UPWEY TECOMA',
+  'MOUNT EVELYN':       'MT EVELYN',
+  'GLEN WAVERLEY ROVERS':   'GLEN WAVERLEY ROVERS',
 };
 
 function detectByeWeeks(fixtures) {
@@ -957,8 +961,15 @@ const CREST_ALIASES = {
   'WANTIRNA SOUTH':         'WANTIRNA SOUTH',
   'CROYDON NORTH':          'CROYDON NORTH',
   'CROYDON NTH':            'CROYDON NORTH',
+  'CROYDON NORTH MLOC':     'CROYDON NORTH',
   'E RINGWOOD':             'EAST RINGWOOD',
   'E BURWOOD':              'EAST BURWOOD',
+  'UPWEY TECOMA':           'UPWEY TECOMA',
+  'UPWEY/TECOMA':           'UPWEY TECOMA',
+  'GLEN WAVERLEY ROVERS':   'GLEN WAVERLEY ROVERS',
+  'MT EVELYN':              'MT EVELYN',
+  'MOUNT EVELYN':           'MT EVELYN',
+  'GLEN WAVERLEY ROVERS':   'GLEN WAVERLEY ROVERS',
 };
 
 async function getCrest(playhqName) {
@@ -1045,10 +1056,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.41] Canvas font:', testCtx.font);
-  console.log('[v0.41] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.41] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.41] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.44] Canvas font:', testCtx.font);
+  console.log('[v0.44] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.44] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.44] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1369,8 +1380,9 @@ async function renderCard() {
     // - If dominant home venue set: only show when different
     const gameVenue = f.venue || '';
     const showVenue = gameVenue && (!homeVenue || gameVenue !== homeVenue);
-    const leftVenue  = f.isHome && showVenue ? gameVenue : '';
-    const rightVenue = !f.isHome && showVenue ? gameVenue : '';
+    // Venue always on the HOME team pill (left pill) — never on away pill
+    const leftVenue  = showVenue ? gameVenue : '';
+    const rightVenue = '';
 
     // Left pill - crest on LEFT, text on RIGHT
     drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
