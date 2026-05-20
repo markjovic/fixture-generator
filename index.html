@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.45</span>
+    <span class="badge">Beta 0.46</span>
   </header>
 
   <!-- Left panel -->
@@ -888,7 +888,7 @@ function detectTeamInfo(htmlText) {
     .replace(/^U\d+\s*/i, '')   // remove leading age group (e.g. "U12 Purple" → "Purple")
     .replace(/\s+U\d+.*$/i, '') // remove trailing age group
     .trim();  // e.g. "Purple", "Gold/Heathmont"
-  const displayName = [age, teamDescriptor || colour || clubName, year].filter(Boolean).join(' ');
+  const displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
 
   return { fullTeamName, clubName, league, grade, displayName, year, colour };
 }
@@ -1056,10 +1056,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.45] Canvas font:', testCtx.font);
-  console.log('[v0.45] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.45] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.45] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.46] Canvas font:', testCtx.font);
+  console.log('[v0.46] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.46] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.46] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1373,8 +1373,9 @@ async function renderCard() {
     const leftIsNorwood = f.isHome;
     const leftCrest  = leftIsNorwood ? state.norwood_crest : state.crests[ALIASES[oppShort]||oppShort];
     const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.norwood_crest;
-    const leftName   = leftIsNorwood ? 'NORWOOD' : oppShort;
-    const rightName  = leftIsNorwood ? oppShort  : 'NORWOOD';
+    const ourClubPillName = (document.getElementById('club-name')?.value || 'NORWOOD').toUpperCase().split(' ').slice(0,2).join(' ');
+    const leftName   = leftIsNorwood ? ourClubPillName : oppShort;
+    const rightName  = leftIsNorwood ? oppShort  : ourClubPillName;
     // Show venue under home team pill:
     // - If no dominant home venue (homeVenue empty): always show
     // - If dominant home venue set: only show when different
@@ -1849,6 +1850,10 @@ document.getElementById('file-input').addEventListener('change', async e => {
       const secondary = isGold ? clubC.primary   : clubC.secondary;
       setColours(primary, secondary);
     }
+    // Load club's own crest for "our team" pill
+    getCrest(detectedClub).then(img => {
+      state.norwood_crest = img || state.norwood_crest;
+    });
   }
   // Auto-select colour scheme from team name
   // Default purple; gold only if explicitly "Gold" in name
