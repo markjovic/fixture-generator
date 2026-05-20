@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.46</span>
+    <span class="badge">Beta 0.47</span>
   </header>
 
   <!-- Left panel -->
@@ -614,36 +614,8 @@ const DEFAULT_CONFIG = {
 };
 
 const DEFAULT_COLOURS = {
-  purple: {
-    name: "Purple",
-    card_gradient: ["#22085f","#300f8a","#1a0650","#0e042e"],
-    body_bg: "#0d0530",
-    card_shadow: "rgba(80,20,200,0.55)",
-    norwood_pill_gradient: ["#5520b0","#6b35d0"],
-    opp_pill_gradient: ["#2a1470","#3a2290"],
-    date_badge_bg: "#f5c800",
-    date_badge_text: "#1a0858",
-    round_label_color: "rgba(245,200,0,0.9)",
-    vs_circle_text: "#1a0858",
-    accent_color: "#f5c800",
-    finals_line_color: "#f5c800",
-    pill_text_color: "#fff"
-  },
-  gold: {
-    name: "Gold",
-    card_gradient: ["#6b5800","#5a4800","#473800","#2e2400"],
-    body_bg: "#2a2000",
-    card_shadow: "rgba(255,220,0,0.6)",
-    norwood_pill_gradient: ["#f0d000","#ffe600"],
-    opp_pill_gradient: ["#c8a800","#b89400"],
-    date_badge_bg: "#5520b0",
-    date_badge_text: "#fff",
-    round_label_color: "rgba(255,230,0,0.95)",
-    vs_circle_text: "#1a0858",
-    accent_color: "#ffe600",
-    finals_line_color: "#7730d0",
-    pill_text_color: "#1a0858"
-  }
+  "_default": { "primary": "#22085f", "secondary": "#f5c800" },
+  "Norwood":  { "primary": "#22085f", "secondary": "#f5c800" }
 };
 
 // ── State ───────────────────────────────────────────────────
@@ -748,12 +720,13 @@ function updateColourPreview() {
 }
 
 function buildSchemePicker() {
-  // Load club colours if available
-  const clubName = document.getElementById('club-name')?.value?.trim() || '';
-  const clubColours = state.colours[clubName] || state.colours['_default'] || state.colours[Object.keys(state.colours)[0]];
-  if (clubColours) {
-    setColours(clubColours.primary, clubColours.secondary);
-  }
+  const rawName = document.getElementById('club-name')?.value?.trim() || '';
+  // Try exact match, then first-word match (handles "Norwood Junior Football Club" → "Norwood")
+  const clubColours = state.colours[rawName]
+    || Object.entries(state.colours).find(([k]) => k !== '_default' && rawName.startsWith(k))?.[1]
+    || state.colours['_default']
+    || { primary: '#22085f', secondary: '#f5c800' };
+  setColours(clubColours.primary, clubColours.secondary);
   updateColourPreview();
 }
 
@@ -1056,10 +1029,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.46] Canvas font:', testCtx.font);
-  console.log('[v0.46] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.46] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.46] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.47] Canvas font:', testCtx.font);
+  console.log('[v0.47] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.47] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.47] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
