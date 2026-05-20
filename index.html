@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.47</span>
+    <span class="badge">Beta 0.48</span>
   </header>
 
   <!-- Left panel -->
@@ -1817,11 +1817,17 @@ document.getElementById('file-input').addEventListener('change', async e => {
     // Auto-load club colours
     const detectedClub = teamInfo.clubName || '';
     const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
+    console.log('[colours] detectedClub:', detectedClub, 'isGold:', isGold);
+    console.log('[colours] state.colours keys:', Object.keys(state.colours));
     const clubC = state.colours[detectedClub] || state.colours['_default'];
+    console.log('[colours] clubC:', clubC);
     if (clubC) {
       const primary   = isGold ? clubC.secondary : clubC.primary;
       const secondary = isGold ? clubC.primary   : clubC.secondary;
+      console.log('[colours] calling setColours:', primary, secondary);
       setColours(primary, secondary);
+    } else {
+      console.log('[colours] NO MATCH - colours not set');
     }
     // Load club's own crest for "our team" pill
     getCrest(detectedClub).then(img => {
