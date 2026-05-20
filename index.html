@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.52</span>
+    <span class="badge">Beta 0.53</span>
   </header>
 
   <!-- Left panel -->
@@ -2018,20 +2018,23 @@ document.getElementById('file-input').addEventListener('change', async e => {
     return;
   }
 
-  // Auto-detect team info from page title
+  // Auto-detect team info from page title — always reset on new upload
   const teamInfo = detectTeamInfo(text);
   if (teamInfo) {
     const nameField = document.getElementById('team-name');
     const sublabelField = document.getElementById('team-sublabel');
     const clubField = document.getElementById('club-name');
-    if (nameField && !nameField.dataset.userEdited) {
+    if (nameField) {
       nameField.value = teamInfo.displayName || teamInfo.fullTeamName;
+      nameField.dataset.userEdited = '';
     }
-    if (sublabelField && !sublabelField.dataset.userEdited) {
+    if (sublabelField) {
       sublabelField.value = teamInfo.league;
+      sublabelField.dataset.userEdited = '';
     }
-    if (clubField && !clubField.dataset.userEdited) {
+    if (clubField) {
       clubField.value = teamInfo.clubName;
+      clubField.dataset.userEdited = '';
     }
     // Auto-load club colours
     const detectedClub = teamInfo.clubName || '';
@@ -2059,9 +2062,9 @@ document.getElementById('file-input').addEventListener('change', async e => {
   // Always update from fixture file (overrides config default)
   // Empty string = no dominant venue, show all venues
   const venueField = document.getElementById('home-venue');
-  if (venueField && !venueField.dataset.userEdited) {
-    const detectedVenue = detectHomeVenue(results);
-    venueField.value = detectedVenue; // set even if empty
+  if (venueField) {
+    venueField.value = detectHomeVenue(results);
+    venueField.dataset.userEdited = '';
   }
   processResults(results, fb);
 });
