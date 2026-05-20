@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.40</span>
+    <span class="badge">Beta 0.41</span>
   </header>
 
   <!-- Left panel -->
@@ -1045,10 +1045,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.40] Canvas font:', testCtx.font);
-  console.log('[v0.40] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.40] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.40] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.41] Canvas font:', testCtx.font);
+  console.log('[v0.41] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.41] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.41] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1098,7 +1098,10 @@ async function renderCard() {
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // ── Watermarks (all inside clip, all screen blend) ──
+  // ── Watermarks — blend mode depends on background lightness ──
+  // screen = lightens (good on dark bg), multiply = darkens (good on light bg)
+  const [,,_pL] = hexToHsl(_p);
+  const wmBlend = _pL > 0.4 ? 'multiply' : 'screen';
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
@@ -1107,7 +1110,7 @@ async function renderCard() {
     const wm1_sz = 290;
     ctx.save();
     ctx.globalAlpha = 0.08;
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalCompositeOperation = wmBlend;
     ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
     ctx.rotate(10 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_tr, -wm1_sz/2, -wm1_sz/2, wm1_sz, wm1_sz);
@@ -1119,7 +1122,7 @@ async function renderCard() {
     const wm2_sz = 290;
     ctx.save();
     ctx.globalAlpha = 0.07;
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalCompositeOperation = wmBlend;
     ctx.translate(-40 + wm2_sz/2, CARD_H + 50 - wm2_sz/2);
     ctx.rotate(-8 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_bl, -wm2_sz/2, -wm2_sz/2, wm2_sz, wm2_sz);
@@ -1129,8 +1132,8 @@ async function renderCard() {
   // Centre photo watermark
   if (state.watermarks.photo_centre) {
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = wmBlend === 'multiply' ? 0.5 : 1;
     const wm3_w = 364;
     const wm3_aspect = state.watermarks.photo_centre.naturalHeight / state.watermarks.photo_centre.naturalWidth;
     const wm3_h = wm3_w * wm3_aspect;
@@ -1143,8 +1146,8 @@ async function renderCard() {
   // Player LEFT - positioned from bottom, matching reference: bottom:270px, left:-10px
   if (state.watermarks.player_left) {
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = wmBlend === 'multiply' ? 0.55 : 1;
     const wm4_w = 126;
     const wm4_aspect = state.watermarks.player_left.naturalHeight / state.watermarks.player_left.naturalWidth;
     const wm4_h = wm4_w * wm4_aspect;
@@ -1159,8 +1162,8 @@ async function renderCard() {
   // Player RIGHT - bottom:20px right:-10px rotate(3deg)
   if (state.watermarks.player_right) {
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = wmBlend === 'multiply' ? 0.55 : 1;
     const wm5_w = 200;
     const wm5_aspect = state.watermarks.player_right.naturalHeight / state.watermarks.player_right.naturalWidth;
     const wm5_h = wm5_w * wm5_aspect;
