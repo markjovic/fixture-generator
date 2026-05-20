@@ -1383,7 +1383,9 @@ async function renderCard() {
   let hx = PAD_X, hy = PAD_TOP;
 
   if (state.badgeImg) {
-    const bh = 104, bw = bh * state.badgeImg.naturalWidth / state.badgeImg.naturalHeight;
+    const MAX_BH = 92, MAX_BW = 92;
+    const bh = Math.min(MAX_BH, MAX_BW * state.badgeImg.naturalHeight / state.badgeImg.naturalWidth);
+    const bw = Math.min(MAX_BW, MAX_BH * state.badgeImg.naturalWidth / state.badgeImg.naturalHeight);
     // Gold glow matching reference: filter:drop-shadow(0 2px 10px rgba(245,200,0,0.45))
     ctx.save();
     ctx.shadowColor = addAlpha(_s, 0.85);
@@ -1598,7 +1600,7 @@ async function renderCard() {
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
-      // Coloured ring — tight to vs circle, slight overlap
+      // Coloured ring — tight to vs circle
       ctx.save();
       ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 1.5, 0, Math.PI*2);
       ctx.strokeStyle = ringCol;
