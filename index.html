@@ -1383,13 +1383,13 @@ async function renderCard() {
   let hx = PAD_X, hy = PAD_TOP;
 
   if (state.badgeImg) {
-    const bh = 88, bw = bh * state.badgeImg.naturalWidth / state.badgeImg.naturalHeight;
+    const bh = 104, bw = bh * state.badgeImg.naturalWidth / state.badgeImg.naturalHeight;
     // Gold glow matching reference: filter:drop-shadow(0 2px 10px rgba(245,200,0,0.45))
     ctx.save();
-    ctx.shadowColor = addAlpha(_s, 0.65);
-    ctx.shadowBlur = 18;
+    ctx.shadowColor = addAlpha(_s, 0.85);
+    ctx.shadowBlur = 28;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 3;
+    ctx.shadowOffsetY = 4;
     ctx.drawImage(state.badgeImg, hx, hy, bw, bh);
     ctx.restore();
     hx += bw + 14;
@@ -1406,8 +1406,8 @@ async function renderCard() {
   // Simulate -webkit-text-stroke + text-shadow from reference
   ctx.save();
   // Glow layer
-  ctx.shadowColor = 'rgba(120,60,255,0.75)';
-  ctx.shadowBlur = 18;
+  ctx.shadowColor = addAlpha(_s, 0.85);
+  ctx.shadowBlur = 26;
   ctx.fillStyle = '#ffffff';
   ctx.fillText(teamName, hx, hy + 2);
   ctx.restore();
@@ -1589,20 +1589,18 @@ async function renderCard() {
     // Win/loss/draw ring with white outline
     if (hasScore) {
       const ringCol = f.weWon === null
-        ? 'rgba(251,146,60,0.95)'   // draw = orange
-        : f.weWon
-          ? 'rgba(34,197,94,0.95)'  // win = green
-          : 'rgba(239,68,68,0.95)'; // loss = red
-      // White outline ring (outermost)
+        ? 'rgba(251,146,60,0.95)'
+        : f.weWon ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)';
+      // White outer ring
       ctx.save();
-      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 4.5, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 4, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
-      // Coloured ring
+      // Coloured ring — tight to vs circle, slight overlap
       ctx.save();
-      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 2.5, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(vsCX, vsCY, vsR + 1.5, 0, Math.PI*2);
       ctx.strokeStyle = ringCol;
       ctx.lineWidth = 3;
       ctx.stroke();
