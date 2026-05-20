@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.44</span>
+    <span class="badge">Beta 0.45</span>
   </header>
 
   <!-- Left panel -->
@@ -888,7 +888,7 @@ function detectTeamInfo(htmlText) {
     .replace(/^U\d+\s*/i, '')   // remove leading age group (e.g. "U12 Purple" → "Purple")
     .replace(/\s+U\d+.*$/i, '') // remove trailing age group
     .trim();  // e.g. "Purple", "Gold/Heathmont"
-  const displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
+  const displayName = [age, teamDescriptor || colour || clubName, year].filter(Boolean).join(' ');
 
   return { fullTeamName, clubName, league, grade, displayName, year, colour };
 }
@@ -1056,10 +1056,10 @@ async function renderCard() {
   const testC = document.createElement('canvas');
   const testCtx = testC.getContext('2d');
   testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.44] Canvas font:', testCtx.font);
-  console.log('[v0.44] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.44] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.44] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
+  console.log('[v0.45] Canvas font:', testCtx.font);
+  console.log('[v0.45] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.45] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
+  console.log('[v0.45] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1837,7 +1837,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
     if (sublabelField && !sublabelField.dataset.userEdited) {
       sublabelField.value = teamInfo.league;
     }
-    if (clubField && !clubField.dataset.userEdited && !clubField.value) {
+    if (clubField && !clubField.dataset.userEdited) {
       clubField.value = teamInfo.clubName;
     }
     // Auto-load club colours
