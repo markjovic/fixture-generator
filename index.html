@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.72</span>
+    <span class="badge">Beta 0.73</span>
   </header>
 
   <!-- Left panel -->
@@ -1307,18 +1307,20 @@ async function renderCard() {
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // EFNL logo top-right — source-over so it's always visible regardless of card colour
+  // EFNL logo top-right — rotated watermark style
   if (state.watermarks.monogram_tr) {
     const efnl_w = 220;
     const efnl_aspect = state.watermarks.monogram_tr.naturalHeight / state.watermarks.monogram_tr.naturalWidth;
     const efnl_h = efnl_w * efnl_aspect;
-    // Position: top-right, bleed ~40px off right edge, top of image at y=20
-    const efnl_x = CARD_W - efnl_w + 40;
-    const efnl_y = 20;
     ctx.save();
-    ctx.globalAlpha = isLight ? 0.25 : 0.20;
+    ctx.globalAlpha = isLight ? 0.12 : 0.10;
     ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(state.watermarks.monogram_tr, efnl_x, efnl_y, efnl_w, efnl_h);
+    // Centre at top-right area, ~30px bleed off right edge
+    const cx = CARD_W - efnl_w/2 + 30;
+    const cy = efnl_h/2 + 10;
+    ctx.translate(cx, cy);
+    ctx.rotate(10 * Math.PI/180);
+    ctx.drawImage(state.watermarks.monogram_tr, -efnl_w/2, -efnl_h/2, efnl_w, efnl_h);
     ctx.restore();
   }
 
