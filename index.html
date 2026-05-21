@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.97</span>
+    <span class="badge">Beta 0.98</span>
   </header>
 
   <!-- Left panel -->
@@ -1087,42 +1087,42 @@ function detectTeamInfo(htmlText) {
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const title = doc.querySelector('title')?.textContent || '';
 
-  // Two formats seen in the wild:
-  // A: "Norwood U12 Purple Fixture for Norwood (Eastern Football Netball League) U12 - B 2026 | PlayHQ"
-  // B: "Lysterfield U12 Teal Fixture for Lysterfield U12 - A 2026 | PlayHQ"  (no league in brackets)
   let fullTeamName, clubName, league, grade;
 
-  const mA = title.match(/^(.+?)\s+Fixture for\s+([^(]+?)\s*\(([^)]+)\)\s*([^|]+)/);
-  const mB = title.match(/^(.+?)\s+Fixture for\s+([^|(]+?)\s+([^|]+?)\s*\|/);
+  // Primary: use reliable DOM elements present in all PlayHQ fixture pages
+  const teamHeaderEl = doc.querySelector('[data-testid="team-header-name"]');
+  const leagueEl     = doc.querySelector('[class*="sc-1ttrao6-6"]');
 
-  if (mA) {
-    fullTeamName = mA[1].trim();
-    clubName     = mA[2].trim();
-    league       = mA[3].trim();
-    grade        = mA[4].trim();
-    // If league from title looks like an abbreviation (≤6 chars), try to get full name from body
-    if (league.length <= 6) {
-      const leagueEl = doc.querySelector('[class*="sc-1ttrao6-6"]');
-      if (leagueEl) {
-        const bodyLeague = leagueEl.textContent.split(',')[0].trim();
-        if (bodyLeague.length > league.length) league = bodyLeague;
-      }
-    }
-  } else if (mB) {
-    fullTeamName = mB[1].trim();
-    clubName     = mB[2].trim();
-    grade        = mB[3].trim();
-    // League not in title — scrape from the specific PlayHQ element that contains it
-    // class "sc-1ttrao6-6" is present on the div containing "League, League, year"
-    league = '';
-    const leagueEl = doc.querySelector('[class*="sc-1ttrao6-6"]');
-    if (leagueEl) {
-      // Text is "Eastern Football Netball League, Eastern Football Netball League, 2026"
-      // Take just the first comma-delimited segment
-      league = leagueEl.textContent.split(',')[0].trim();
-    }
-  } else {
-    return null;
+  if (teamHeaderEl) {
+    fullTeamName = teamHeaderEl.textContent.trim();  // e.g. "Lysterfield U12 Teal"
+    // Club name = everything before the first age group (U12, U14 etc)
+    clubName = fullTeamName.replace(/\s+U\d+.*$/i, '').trim();  // "Lysterfield"
+  }
+
+  if (leagueEl) {
+    // Text like "Eastern Football Netball League, Eastern Football Netball League, 2026"
+    league = leagueEl.textContent.split(',')[0].trim();
+  }
+
+  // Grade from title — still most reliably found there
+  // Format A: "... (League) U12 - B 2026 |"  Format B: "... ClubName U12 - A 2026 |"
+  const mA = title.match(/\)\s*([^|]+)\s*\|/);
+  const mB = title.match(/Fixture for\s+[^|]+?\s+(U\d+[^|]*?)\s*\|/i);
+  grade = (mA?.[1] || mB?.[1] || '').trim();
+
+  // If DOM elements failed, fall back to full title parsing
+  if (!fullTeamName) {
+    const mFull = title.match(/^(.+?)\s+Fixture for\s+([^(|]+?)\s*(?:\([^)]+\))?\s*([^|]+)/);
+    if (!mFull) return null;
+    fullTeamName = mFull[1].trim();
+    clubName     = mFull[2].trim();
+    grade        = mFull[3].trim();
+  }
+
+  if (!league) {
+    // Try to get league from title brackets
+    const lm = title.match(/\(([^)]+)\)/);
+    league = lm ? lm[1].trim() : '';
   }
 
   // Derive a display team name: strip club prefix if present
