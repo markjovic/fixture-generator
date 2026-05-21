@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.77</span>
+    <span class="badge">Beta 0.78</span>
   </header>
 
   <!-- Left panel -->
@@ -1399,7 +1399,7 @@ async function renderCard() {
     const wm_w = Math.round(240 * 0.90);  // was 240 → now 216
     const wm_h = wm_w * state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
     const tackle_abs_min = PAD_TOP + 92 + 8;
-    const tackle_pct_pos = CARD_H * (124 / REF_CARD_H);
+    const tackle_pct_pos = CARD_H * 0.20;
     const tackle_y = Math.max(tackle_abs_min, tackle_pct_pos);
     drawWm(state.watermarks.tackle, -20, tackle_y, wm_w, wm_h);
   }
@@ -1411,7 +1411,7 @@ async function renderCard() {
     const wm_w = 200;
     const wm_h = wm_w * state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
     // Keep bottom edge at 11.86% from bottom of card (proportional, not absolute)
-    const run_bottom = CARD_H * (1 - 98.4 / REF_CARD_H);
+    const run_bottom = CARD_H * (1 - 0.20);
     const run_y = run_bottom - wm_h;
     drawWm(state.watermarks.player_running, -33, run_y, wm_w, wm_h);
   }
