@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.76</span>
+    <span class="badge">Beta 0.77</span>
   </header>
 
   <!-- Left panel -->
@@ -1385,18 +1385,18 @@ async function renderCard() {
   const showHuddle         = CARD_H >= 440;
   const REF_CARD_H = 830;
 
-  // wm_huddle — centred, slightly right of true centre (310px)
+  // wm_huddle — centred, slightly right of true centre (310px). 15% smaller than before.
   if (showHuddle && state.watermarks.huddle) {
-    const wm_w = 256;
+    const wm_w = Math.round(256 * 0.85);  // was 256 → now 218
     const wm_h = wm_w * state.watermarks.huddle.naturalHeight / state.watermarks.huddle.naturalWidth;
     drawWm(state.watermarks.huddle, 310 - wm_w/2, (CARD_H - wm_h)/2, wm_w, wm_h);
   }
 
-  // wm_tackle — top-left, x=-20 (bleeds left)
+  // wm_tackle — top-left, x=-20 (bleeds left). 10% smaller than before.
   // Anchored at 14.94% from top of reference card (124px on 830px card).
   // Never renders higher than PAD_TOP + 92 + 8 (below the badge).
   if (showTackle && state.watermarks.tackle) {
-    const wm_w = 240;
+    const wm_w = Math.round(240 * 0.90);  // was 240 → now 216
     const wm_h = wm_w * state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
     const tackle_abs_min = PAD_TOP + 92 + 8;
     const tackle_pct_pos = CARD_H * (124 / REF_CARD_H);
@@ -1405,22 +1405,20 @@ async function renderCard() {
   }
 
   // wm_player_running — bottom-left, x=-33 (bleeds left)
-  // Anchored so its bottom edge sits 98.4px from the bottom of the reference card.
-  // Never renders lower than that absolute distance from the bottom.
+  // Bottom edge anchored as a fixed proportion of card height (11.86% from bottom).
+  // This means it moves smoothly with the card rather than jumping.
   if (showRunningKicking && state.watermarks.player_running) {
     const wm_w = 200;
     const wm_h = wm_w * state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
-    const run_bottom_from_bottom = 98.4;
-    const run_abs_bottom = CARD_H - run_bottom_from_bottom;
-    const run_abs_min_bottom = REF_CARD_H - 98.4;
-    const run_bottom = Math.min(run_abs_bottom, run_abs_min_bottom);
+    // Keep bottom edge at 11.86% from bottom of card (proportional, not absolute)
+    const run_bottom = CARD_H * (1 - 98.4 / REF_CARD_H);
     const run_y = run_bottom - wm_h;
     drawWm(state.watermarks.player_running, -33, run_y, wm_w, wm_h);
   }
 
-  // wm_player_kicking — bottom-right, x=370 (bleeds right), bottom at 4% from card bottom
+  // wm_player_kicking — bottom-right, x=370 (bleeds right). 10% smaller than before.
   if (showRunningKicking && state.watermarks.player_kicking) {
-    const wm_w = 220;
+    const wm_w = Math.round(220 * 0.90);  // was 220 → now 198
     const wm_h = wm_w * state.watermarks.player_kicking.naturalHeight / state.watermarks.player_kicking.naturalWidth;
     drawWm(state.watermarks.player_kicking, 370, CARD_H - wm_h - CARD_H * 0.04, wm_w, wm_h);
   }
