@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.73</span>
+    <span class="badge">Beta 0.74</span>
   </header>
 
   <!-- Left panel -->
@@ -1313,9 +1313,8 @@ async function renderCard() {
     const efnl_aspect = state.watermarks.monogram_tr.naturalHeight / state.watermarks.monogram_tr.naturalWidth;
     const efnl_h = efnl_w * efnl_aspect;
     ctx.save();
-    ctx.globalAlpha = isLight ? 0.12 : 0.10;
+    ctx.globalAlpha = isLight ? 0.07 : 0.06;   // reduced — was 0.12/0.10
     ctx.globalCompositeOperation = 'source-over';
-    // Centre at top-right area, ~30px bleed off right edge
     const cx = CARD_W - efnl_w/2 + 30;
     const cy = efnl_h/2 + 10;
     ctx.translate(cx, cy);
@@ -1338,7 +1337,6 @@ async function renderCard() {
 
   // drawWm: dark cards → screen blend (silhouettes lighten into bg colour)
   //         light cards → multiply blend (dark greyscale presses into bright bg)
-  //         No invert needed — multiply works directly with the dark greyscale files.
   function drawWm(img, x, y, w, h) {
     ctx.save();
     ctx.globalCompositeOperation = isLight ? 'multiply' : 'screen';
@@ -1347,6 +1345,10 @@ async function renderCard() {
     ctx.restore();
   }
 
+  // Reference card: 10 fixtures + 2 byes + finals block = 830px
+  // Used to calculate proportional positions that scale with card height.
+  const REF_CARD_H = 830;
+
   // wm_huddle — centred, slightly right of true centre (310px)
   if (state.watermarks.huddle) {
     const wm_w = 256;
@@ -1354,18 +1356,30 @@ async function renderCard() {
     drawWm(state.watermarks.huddle, 310 - wm_w/2, (CARD_H - wm_h)/2, wm_w, wm_h);
   }
 
-  // wm_tackle — top-left, x=-20 (bleeds left), top at 12% of card height (min: below badge)
+  // wm_tackle — top-left, x=-20 (bleeds left)
+  // Anchored at 14.94% from top of reference card (124px on 830px card).
+  // Never renders higher than PAD_TOP + 92 + 8 (below the badge).
   if (state.watermarks.tackle) {
     const wm_w = 240;
     const wm_h = wm_w * state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
-    drawWm(state.watermarks.tackle, -20, Math.max(PAD_TOP + 92 + 8, CARD_H * 0.12), wm_w, wm_h);
+    const tackle_abs_min = PAD_TOP + 92 + 8;          // 124px — below badge
+    const tackle_pct_pos = CARD_H * (124 / REF_CARD_H); // proportional position
+    const tackle_y = Math.max(tackle_abs_min, tackle_pct_pos);
+    drawWm(state.watermarks.tackle, -20, tackle_y, wm_w, wm_h);
   }
 
-  // wm_player_running — bottom-left, x=-33 (bleeds left), centred at 72% of card height
+  // wm_player_running — bottom-left, x=-33 (bleeds left)
+  // Anchored so its bottom edge sits 11.86% from the bottom of the reference card.
+  // Never renders lower than that absolute distance from the bottom.
   if (state.watermarks.player_running) {
     const wm_w = 200;
     const wm_h = wm_w * state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
-    drawWm(state.watermarks.player_running, -33, CARD_H * 0.72 - wm_h/2, wm_w, wm_h);
+    const run_bottom_from_bottom = REF_CARD_H * (98.4 / REF_CARD_H); // 98.4px from bottom on ref card
+    const run_abs_bottom = CARD_H - run_bottom_from_bottom;           // scales with card
+    const run_abs_min_bottom = REF_CARD_H - 98.4;                     // never lower than ref position
+    const run_bottom = Math.min(run_abs_bottom, run_abs_min_bottom);
+    const run_y = run_bottom - wm_h;
+    drawWm(state.watermarks.player_running, -33, run_y, wm_w, wm_h);
   }
 
   // wm_player_kicking — bottom-right, x=370 (bleeds right), bottom at 4% from card bottom
