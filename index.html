@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.66</span>
+    <span class="badge">Beta 0.67</span>
   </header>
 
   <!-- Left panel -->
@@ -500,9 +500,9 @@ html, body {
       <div id="light-wm-slider-wrap" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span class="section-title">Watermark opacity</span>
-          <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">50%</span>
+          <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">40%</span>
         </div>
-        <input type="range" id="wm-light-slider" min="0" max="100" value="50"
+        <input type="range" id="wm-light-slider" min="0" max="100" value="40"
           style="width:100%;accent-color:var(--accent);cursor:pointer">
         <p style="font-size:11px;color:var(--text3);margin-top:6px">Adjusts watermark visibility on both dark and light cards. Report the % when happy.</p>
       </div>
@@ -1243,14 +1243,6 @@ const FOOTER_H = 80; // finals block
 const PAD_X = 24, PAD_Y = 24;
 
 async function renderCard() {
-  // Debug: check what font canvas actually resolves
-  const testC = document.createElement('canvas');
-  const testCtx = testC.getContext('2d');
-  testCtx.font = '800 16px "Outfit"';
-  console.log('[v0.48] Canvas font:', testCtx.font);
-  console.log('[v0.48] BC 900 check:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.48] fonts.check 900:', document.fonts.check('900 16px "Outfit"'));
-  console.log('[v0.48] fonts.check 800:', document.fonts.check('800 16px "Outfit"'));
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
   const sublabel = document.getElementById('team-sublabel').value.trim() || '';
@@ -1307,7 +1299,10 @@ async function renderCard() {
   //              Monogram is always screen (it's white, invert not needed).
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
-  const playerAlpha   = parseFloat(document.getElementById('wm-light-slider')?.value ?? 50) / 100;
+  // Slider controls opacity for whichever card is active.
+  // Default: 40% dark (screen), 70% light (multiply — needs more to show on bright bg)
+  const sliderVal = parseFloat(document.getElementById('wm-light-slider')?.value ?? (isLight ? 70 : 40));
+  const playerAlpha   = sliderVal / 100;
   const monogramAlpha = isLight ? 0.35 : 0.15;
 
   ctx.save();
@@ -1337,30 +1332,14 @@ async function renderCard() {
     ctx.restore();
   }
 
-  // Helper: draw player watermark.
-  // On light cards we need to make the greyscale silhouettes visible — we do this
-  // by manually inverting pixels on an offscreen canvas (ctx.filter is unreliable
-  // in some canvas environments), then drawing with screen blend.
+  // drawWm: dark cards → screen blend (silhouettes lighten into bg colour)
+  //         light cards → multiply blend (dark greyscale presses into bright bg)
+  //         No invert needed — multiply works directly with the dark greyscale files.
   function drawWm(img, x, y, w, h) {
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalCompositeOperation = isLight ? 'multiply' : 'screen';
     ctx.globalAlpha = playerAlpha;
-    if (isLight) {
-      // Render to offscreen canvas, invert RGB while preserving alpha
-      const oc = document.createElement('canvas');
-      oc.width = img.naturalWidth; oc.height = img.naturalHeight;
-      const oc_ctx = oc.getContext('2d');
-      oc_ctx.drawImage(img, 0, 0);
-      const id = oc_ctx.getImageData(0, 0, oc.width, oc.height);
-      const d = id.data;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i+3] > 0) { d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; }
-      }
-      oc_ctx.putImageData(id, 0, 0);
-      ctx.drawImage(oc, x, y, w, h);
-    } else {
-      ctx.drawImage(img, x, y, w, h);
-    }
+    ctx.drawImage(img, x, y, w, h);
     ctx.restore();
   }
 
