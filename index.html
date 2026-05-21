@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.101</span>
+    <span class="badge">Beta 0.102</span>
   </header>
 
   <!-- Left panel -->
@@ -495,6 +495,16 @@ html, body {
       <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
       <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
+      </div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span class="section-title">Watermark opacity</span>
+          <span id="wm-opacity-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">auto</span>
+        </div>
+        <input type="range" id="wm-opacity-slider" min="0" max="50" value="0"
+          style="width:100%;accent-color:var(--accent);cursor:pointer">
+        <p style="font-size:11px;color:var(--text3);margin-top:6px">0 = auto (scales with card lightness). Drag to override. Report % values when happy.</p>
       </div>
 
     </div>
@@ -1356,11 +1366,13 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Player watermarks: source-over at fixed low opacity works on all card colours —
-  // same approach as the EFNL watermark. No blend mode complexity needed.
+  // Player watermarks: source-over, opacity scales from 30% (dark) to 20% (light).
+  // Slider in Colours tab overrides when non-zero.
   const [,,_pL] = hexToHsl(_p);
-  const isLight    = _pL >= 0.50;
-  const playerAlpha   = 0.30;
+  const isLight = _pL >= 0.50;
+  const sliderVal = parseInt(document.getElementById('wm-opacity-slider')?.value || 0);
+  const autoAlpha = 0.30 - (_pL * 0.20);  // 30% at L=0, 20% at L=1.0
+  const playerAlpha = sliderVal > 0 ? sliderVal / 100 : Math.max(0.20, Math.min(0.30, autoAlpha));
   const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
   ctx.save();
@@ -2061,6 +2073,12 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
   setColours(s, p);
+});
+
+document.getElementById('wm-opacity-slider')?.addEventListener('input', e => {
+  const val = parseInt(e.target.value);
+  document.getElementById('wm-opacity-value').textContent = val === 0 ? 'auto' : val + '%';
+  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
