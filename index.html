@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.103</span>
+    <span class="badge">Beta 0.104</span>
   </header>
 
   <!-- Left panel -->
@@ -495,16 +495,6 @@ html, body {
       <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
       <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
-      </div>
-
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span class="section-title">Watermark opacity</span>
-          <span id="wm-opacity-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">25%</span>
-        </div>
-        <input type="range" id="wm-opacity-slider" min="0" max="50" value="25"
-          style="width:100%;accent-color:var(--accent);cursor:pointer">
-        <p style="font-size:11px;color:var(--text3);margin-top:6px">Auto-set based on card colour. Drag to override. Report % when happy.</p>
       </div>
 
     </div>
@@ -1366,20 +1356,10 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Calculate auto opacity based on card lightness (30% dark → 20% light)
+  // Opacity scales from 30% (dark cards) down to 20% (light cards)
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
-  const autoAlpha = Math.max(0.20, Math.min(0.30, 0.30 - (_pL * 0.20)));
-
-  // If user hasn't manually moved the slider, update it to the auto value
-  const sliderEl = document.getElementById('wm-opacity-slider');
-  const valEl    = document.getElementById('wm-opacity-value');
-  if (sliderEl && !sliderEl.dataset.userSet) {
-    const autoPct = Math.round(autoAlpha * 100);
-    sliderEl.value = autoPct;
-    if (valEl) valEl.textContent = autoPct + '%';
-  }
-  const playerAlpha = parseInt(sliderEl?.value || 25) / 100;
+  const playerAlpha = Math.max(0.20, Math.min(0.30, 0.30 - (_pL * 0.20)));
   const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
   ctx.save();
@@ -1478,7 +1458,7 @@ async function renderCard() {
   let hx = PAD_X, hy = PAD_TOP;
 
   if (state.badgeImg) {
-    const MAX_BH = 92, MAX_BW = 92;
+    const MAX_BH = 92, MAX_BW = 184;
     // Crop badge to its content bounds using an offscreen canvas,
     // so the shield fills the target size rather than leaving black padding
     const bcv = document.createElement('canvas');
@@ -2080,13 +2060,6 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
   setColours(s, p);
-});
-
-document.getElementById('wm-opacity-slider')?.addEventListener('input', e => {
-  const val = parseInt(e.target.value);
-  document.getElementById('wm-opacity-value').textContent = val + '%';
-  e.target.dataset.userSet = 'true';
-  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
