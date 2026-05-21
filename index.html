@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.86</span>
+    <span class="badge">Beta 0.87</span>
   </header>
 
   <!-- Left panel -->
@@ -1627,11 +1627,11 @@ async function renderCard() {
     const ourClubPillName = (document.getElementById('club-name')?.value || 'NORWOOD').toUpperCase().split(' ').slice(0,2).join(' ');
     const leftName   = leftIsNorwood ? ourClubPillName : oppShort;
     const rightName  = leftIsNorwood ? oppShort  : ourClubPillName;
-    // Show venue under home team pill:
-    // - If no dominant home venue (homeVenue empty): always show
-    // - If dominant home venue set: only show when different
+    // Show venue under home team pill only when it differs from the dominant home venue.
+    // homeVenue field may have "HOME VENUE: X" or "HOME VENUES: X / Y" prefix — strip it for comparison.
     const gameVenue = f.venue || '';
-    const showVenue = gameVenue && (!homeVenue || gameVenue !== homeVenue);
+    const homeVenueRaw = homeVenue.replace(/^HOME VENUES?:\s*/i, '').trim();
+    const showVenue = gameVenue && (!homeVenueRaw || gameVenue !== homeVenueRaw);
     // Venue always on the HOME team pill (left pill) — never on away pill
     const leftVenue  = showVenue ? gameVenue : '';
     const rightVenue = '';
