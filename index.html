@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.113</span>
+    <span class="badge">Beta 0.114</span>
   </header>
 
   <!-- Left panel -->
@@ -1335,7 +1335,7 @@ async function renderCard() {
 
   // Layout constants — must be declared before height calculation
   const PAD_X = 20, PAD_TOP = 24, PAD_BOT = 26;
-  const YEAR_BAR_H = 34;  // "2026 FIXTURES" bar above the header
+  const YEAR_BAR_H = 28;  // "2026 FIXTURES" bar above the header
   const HEADER_H = 96;
   const ROW_H = 50, ROW_GAP = 4;
   const BYE_H = 28;
@@ -1347,7 +1347,7 @@ async function renderCard() {
   for (const row of allRows) {
     contentH += (row.type === 'bye' ? BYE_H : ROW_H) + ROW_GAP;
   }
-  const CARD_H = PAD_TOP + YEAR_BAR_H + 8 + HEADER_H + BETWEEN + contentH + FINALS_H + PAD_BOT;
+  const CARD_H = PAD_TOP + YEAR_BAR_H + 4 + HEADER_H + BETWEEN + contentH + FINALS_H + PAD_BOT;
 
   // Card width scales with height to maintain A4 portrait proportions (ratio 0.707),
   // with a minimum of 560px so short cards never go narrower than the current design.
@@ -1488,7 +1488,7 @@ async function renderCard() {
 
   // ── Header ──
   const ac = _s;
-  let hx = PAD_X, hy = PAD_TOP + YEAR_BAR_H + 8;  // shifted down below year bar
+  let hx = PAD_X, hy = PAD_TOP + YEAR_BAR_H + 4;  // shifted down below year bar
 
   if (state.badgeImg) {
     const MAX_BH = 92, MAX_BW = 184;
@@ -1590,7 +1590,7 @@ async function renderCard() {
   const oPill = [lighten(_p,0.06), lighten(_p,0.12)];
   const pillTxt = bestText(lighten(_p,0.18));
 
-  let ry = PAD_TOP + YEAR_BAR_H + 8 + HEADER_H + BETWEEN;
+  let ry = PAD_TOP + YEAR_BAR_H + 4 + HEADER_H + BETWEEN;
   const rx = PAD_X;
   // Pre-calculate pill x positions for use outside the row loop (finals, bye)
   const xLP_outer = rx + COL_RND + COL_GAP + COL_DATE + COL_GAP;
