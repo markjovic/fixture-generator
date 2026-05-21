@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.56</span>
+    <span class="badge">Beta 0.57</span>
   </header>
 
   <!-- Left panel -->
@@ -1290,18 +1290,23 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // All watermark PNGs are pre-processed RGBA (greyscale, pre-dimmed, pre-alpha).
-  // Draw with source-over — no manual blend mode or alpha needed.
-  // Clip to card rounded rect so bleeds are clean.
+  // Blend mode adapts to card lightness:
+  //   dark card  → 'screen'   (watermark lightens into background colour)
+  //   light card → 'multiply' (watermark darkens into background colour)
+  // Opacity is kept very low so watermarks are a subtle hint, not a feature.
+  const [,,_pL] = hexToHsl(_p);
+  const wmBlend = _pL > 0.50 ? 'multiply' : 'screen';
+  const wmAlpha = _pL > 0.50 ? 0.18 : 0.13;  // slightly stronger on light (multiply needs it)
+
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // Monogram top-right (screen blend, very low alpha)
+  // Monogram top-right
   if (state.watermarks.monogram_tr) {
     const wm1_sz = 290;
     ctx.save();
-    ctx.globalAlpha = 0.08;
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = wmAlpha * 0.7;
+    ctx.globalCompositeOperation = wmBlend;
     ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
     ctx.rotate(10 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_tr, -wm1_sz/2, -wm1_sz/2, wm1_sz, wm1_sz);
@@ -1312,52 +1317,49 @@ async function renderCard() {
   if (state.watermarks.monogram_bl) {
     const wm2_sz = 290;
     ctx.save();
-    ctx.globalAlpha = 0.07;
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = wmAlpha * 0.6;
+    ctx.globalCompositeOperation = wmBlend;
     ctx.translate(-40 + wm2_sz/2, CARD_H + 50 - wm2_sz/2);
     ctx.rotate(-8 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_bl, -wm2_sz/2, -wm2_sz/2, wm2_sz, wm2_sz);
     ctx.restore();
   }
 
+  // Helper: draw a watermark image at given position with shared blend/alpha
+  function drawWm(img, x, y, w, h) {
+    ctx.save();
+    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = wmAlpha;
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore();
+  }
+
   // wm_huddle — centred, slightly right of true centre (310px)
   if (state.watermarks.huddle) {
     const wm_w = 256;
-    const wm_aspect = state.watermarks.huddle.naturalHeight / state.watermarks.huddle.naturalWidth;
-    const wm_h = wm_w * wm_aspect;
-    const wm_x = 310 - wm_w / 2;          // centre at 310px (slightly right of card centre)
-    const wm_y = (CARD_H - wm_h) / 2;     // vertically centred
-    ctx.drawImage(state.watermarks.huddle, wm_x, wm_y, wm_w, wm_h);
+    const wm_h = wm_w * state.watermarks.huddle.naturalHeight / state.watermarks.huddle.naturalWidth;
+    drawWm(state.watermarks.huddle, 310 - wm_w/2, (CARD_H - wm_h)/2, wm_w, wm_h);
   }
 
-  // wm_tackle — top-left, below badge, x=-20 (bleeds left), top at 12% of card height
+  // wm_tackle — top-left, x=-20 (bleeds left), top at 12% of card height (min: below badge)
   if (state.watermarks.tackle) {
     const wm_w = 240;
-    const wm_aspect = state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
-    const wm_h = wm_w * wm_aspect;
-    const wm_x = -20;
-    const wm_y = Math.max(PAD_TOP + 92 + 8, CARD_H * 0.12);  // below badge, min 12% from top
-    ctx.drawImage(state.watermarks.tackle, wm_x, wm_y, wm_w, wm_h);
+    const wm_h = wm_w * state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
+    drawWm(state.watermarks.tackle, -20, Math.max(PAD_TOP + 92 + 8, CARD_H * 0.12), wm_w, wm_h);
   }
 
-  // wm_player_running — bottom-left, x=-33 (bleeds left), vertically centred at 72% of card
+  // wm_player_running — bottom-left, x=-33 (bleeds left), centred at 72% of card height
   if (state.watermarks.player_running) {
     const wm_w = 200;
-    const wm_aspect = state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
-    const wm_h = wm_w * wm_aspect;
-    const wm_x = -33;
-    const wm_y = CARD_H * 0.72 - wm_h / 2;
-    ctx.drawImage(state.watermarks.player_running, wm_x, wm_y, wm_w, wm_h);
+    const wm_h = wm_w * state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
+    drawWm(state.watermarks.player_running, -33, CARD_H * 0.72 - wm_h/2, wm_w, wm_h);
   }
 
   // wm_player_kicking — bottom-right, x=370 (bleeds right), bottom at 4% from card bottom
   if (state.watermarks.player_kicking) {
     const wm_w = 220;
-    const wm_aspect = state.watermarks.player_kicking.naturalHeight / state.watermarks.player_kicking.naturalWidth;
-    const wm_h = wm_w * wm_aspect;
-    const wm_x = 370;
-    const wm_y = CARD_H - wm_h - CARD_H * 0.04;
-    ctx.drawImage(state.watermarks.player_kicking, wm_x, wm_y, wm_w, wm_h);
+    const wm_h = wm_w * state.watermarks.player_kicking.naturalHeight / state.watermarks.player_kicking.naturalWidth;
+    drawWm(state.watermarks.player_kicking, 370, CARD_H - wm_h - CARD_H * 0.04, wm_w, wm_h);
   }
 
   // Dot grid
