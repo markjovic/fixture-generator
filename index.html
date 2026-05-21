@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.58</span>
+    <span class="badge">Beta 0.59</span>
   </header>
 
   <!-- Left panel -->
@@ -496,7 +496,17 @@ html, body {
       <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
       </div>
-      
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span class="section-title">Watermark opacity</span>
+          <span id="wm-opacity-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">28%</span>
+        </div>
+        <input type="range" id="wm-opacity-slider" min="0" max="100" value="28"
+          style="width:100%;accent-color:var(--accent);cursor:pointer">
+        <p style="font-size:11px;color:var(--text3);margin-top:6px">Drag to find the right level, then report the % value to lock it in.</p>
+      </div>
+
     </div>
 
     <!-- FINALS TAB -->
@@ -1291,9 +1301,9 @@ async function renderCard() {
 
   // ── Watermarks ────────────────────────────────────────────────────────────
   // screen blend works on both dark and light cards — lifts greyscale watermark
-  // into the background colour. Alpha tuned so they're subtle but visible.
+  // into the background colour. Alpha driven by the opacity slider in the Colours tab.
   const [,,_pL] = hexToHsl(_p);
-  const wmAlpha = _pL > 0.55 ? 0.35 : 0.28;
+  const wmAlpha = (parseFloat(document.getElementById('wm-opacity-slider')?.value || 28) / 100);
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
@@ -1953,6 +1963,12 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
   setColours(s, p);
+});
+
+// Watermark opacity slider
+document.getElementById('wm-opacity-slider')?.addEventListener('input', e => {
+  document.getElementById('wm-opacity-value').textContent = e.target.value + '%';
+  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
