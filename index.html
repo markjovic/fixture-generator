@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.91</span>
+    <span class="badge">Beta 0.92</span>
   </header>
 
   <!-- Left panel -->
@@ -908,7 +908,7 @@ async function loadAllAssets() {
   // Load default badge and watermark logo
   state.defaultBadge = await loadImage('assets/badge.png');
   // Load default club assets — overridden when fixture is uploaded
-  const defaultClub = cfg.club_name ? cfg.club_name.replace(/ Junior Football Club$/i,'').trim() : 'Norwood';
+  const defaultClub = cfg.club_name ? cfg.club_name.replace(/ Junior Football Club$/i,'').trim() : '';
   await loadClubAssets(defaultClub);
 
   buildSchemePicker();
@@ -1066,19 +1066,30 @@ function parseScore(container, ourTeamEl, oppTeamEl) {
 
 
 function detectTeamInfo(htmlText) {
-  // Parse: "TEAMNAME Fixture for CLUB (LEAGUE) GRADE | PlayHQ"
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const title = doc.querySelector('title')?.textContent || '';
 
-  // Extract parts from title
-  // Format: "Norwood U12 Purple Fixture for Norwood (Eastern Football Netball League) U12 - B 2026 | PlayHQ"
-  const m = title.match(/^(.+?)\s+Fixture for\s+([^(]+?)\s*\(([^)]+)\)\s*([^|]+)/);
-  if (!m) return null;
+  // Two formats seen in the wild:
+  // A: "Norwood U12 Purple Fixture for Norwood (Eastern Football Netball League) U12 - B 2026 | PlayHQ"
+  // B: "Lysterfield U12 Teal Fixture for Lysterfield U12 - A 2026 | PlayHQ"  (no league in brackets)
+  let fullTeamName, clubName, league, grade;
 
-  const fullTeamName = m[1].trim();   // "Norwood U12 Purple"
-  const clubName     = m[2].trim();   // "Norwood"
-  const league       = m[3].trim();   // "Eastern Football Netball League"
-  const grade        = m[4].trim();   // "U12 - B 2026"
+  const mA = title.match(/^(.+?)\s+Fixture for\s+([^(]+?)\s*\(([^)]+)\)\s*([^|]+)/);
+  const mB = title.match(/^(.+?)\s+Fixture for\s+([^|(]+?)\s+([^|]+?)\s*\|/);
+
+  if (mA) {
+    fullTeamName = mA[1].trim();
+    clubName     = mA[2].trim();
+    league       = mA[3].trim();
+    grade        = mA[4].trim();
+  } else if (mB) {
+    fullTeamName = mB[1].trim();
+    clubName     = mB[2].trim();
+    league       = '';   // not present in title
+    grade        = mB[3].trim();
+  } else {
+    return null;
+  }
 
   // Derive a display team name: strip club prefix if present
   // "Norwood U12 Purple" → "U12 Purple 2026" (use grade year + colour)
