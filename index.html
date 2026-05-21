@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.98</span>
+    <span class="badge">Beta 0.100</span>
   </header>
 
   <!-- Left panel -->
@@ -1356,26 +1356,11 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Dark cards (L < 0.50):       screen blend, 40% opacity
-  // Mid-light cards (0.50–0.75): multiply blend, opacity scales with lightness
-  // Very light/white (L > 0.75): screen blend, low opacity — multiply makes solid grey blocks on white
+  // Player watermarks: source-over at fixed low opacity works on all card colours —
+  // same approach as the EFNL watermark. No blend mode complexity needed.
   const [,,_pL] = hexToHsl(_p);
-  const isLight   = _pL >= 0.50;
-  const isVeryLight = _pL > 0.75;
-
-  let playerBlend, playerAlpha;
-  if (!isLight) {
-    playerBlend = 'screen';
-    playerAlpha = 0.40;
-  } else if (isVeryLight) {
-    playerBlend = 'screen';
-    // On near-white cards screen barely shows — use low opacity, just a hint
-    playerAlpha = Math.min(0.25, (_pL - 0.75) / 0.25 * 0.25);
-  } else {
-    playerBlend = 'multiply';
-    // 0.50→50%, 0.75→100%
-    playerAlpha = Math.min(1.0, Math.max(0.5, (_pL - 0.50) / 0.25));
-  }
+  const isLight    = _pL >= 0.50;
+  const playerAlpha   = 0.12;
   const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
   ctx.save();
@@ -1409,10 +1394,9 @@ async function renderCard() {
     ctx.restore();
   }
 
-  // drawWm: blend mode and alpha adapt to card lightness (see above)
   function drawWm(img, x, y, w, h) {
     ctx.save();
-    ctx.globalCompositeOperation = playerBlend;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = playerAlpha;
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
