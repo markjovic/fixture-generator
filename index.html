@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.108</span>
+    <span class="badge">Beta 0.109</span>
   </header>
 
   <!-- Left panel -->
@@ -480,15 +480,15 @@ html, body {
         <div class="field">
           <label>Primary colour</label>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="color-primary" value="#22085f" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
-            <input type="text" id="color-primary-hex" value="#22085f" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+            <input type="color" id="color-primary" value="#1a1a2e" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
+            <input type="text" id="color-primary-hex" value="#1a1a2e" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
           </div>
         </div>
         <div class="field">
           <label>Secondary colour</label>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="color-secondary" value="#f5c800" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
-            <input type="text" id="color-secondary-hex" value="#f5c800" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+            <input type="color" id="color-secondary" value="#ffffff" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
+            <input type="text" id="color-secondary-hex" value="#ffffff" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
           </div>
         </div>
       </div>
@@ -615,8 +615,8 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_COLOURS = {
   "_default": {
-    "primary": "#22085f",
-    "secondary": "#f5c800"
+    "primary": "#1a1a2e",
+    "secondary": "#ffffff"
   },
   "Bayswater": {
     "primary": "#10A050",
@@ -793,7 +793,7 @@ const state = {
   config: {...DEFAULT_CONFIG},
   colours: {...DEFAULT_COLOURS},
   scheme: "purple",  badgeImg: null,       // HTMLImageElement
-  norwood_crest: null,  // HTMLImageElement — pill crest
+  ourCrest: null,       // HTMLImageElement — our team's pill crest
   crests: {},           // { "MITCHAM": HTMLImageElement, ... }
   watermarks: {},       // { player_left, player_right, photo_centre, monogram_tr, monogram_bl }
   rounds: [],           // parsed fixture rows
@@ -911,17 +911,16 @@ async function loadAllAssets() {
   // scheme now derived from primary/secondary colours
 
   // Badge & watermarks in parallel
-  const [wm_kicking, wm_running, wm_huddle, wm_tackle, wm_efnl, wm_bl, crestNorwood] = await Promise.all([
+  const [wm_kicking, wm_running, wm_huddle, wm_tackle, wm_efnl, wm_bl] = await Promise.all([
     loadImage('assets/wm_player_kicking.png'),
     loadImage('assets/wm_player_running.png'),
     loadImage('assets/wm_huddle.png'),
     loadImage('assets/wm_tackle.png'),
-    loadImage('assets/wm_logo.png'),        // competition logo — top-right watermark
+    loadImage('assets/wm_logo.png'),
     loadImage('assets/wm_monogram_bl.png'),
-    loadImage('assets/clubs/norwood/crest.png'),
   ]);
   state.watermarks = { player_kicking: wm_kicking, player_running: wm_running, huddle: wm_huddle, tackle: wm_tackle, monogram_tr: wm_efnl, monogram_bl: wm_bl };
-  state.norwood_crest = crestNorwood;
+  state.ourCrest = null;
   state.competition = 'efnl'; // default competition slug
   // Load default badge and watermark logo
   state.defaultBadge = await loadImage('assets/badge.png');
@@ -935,8 +934,8 @@ async function loadAllAssets() {
 // ── UI builders ─────────────────────────────────────────────
 function getColours() {
   return {
-    primary:   document.getElementById('color-primary')?.value || '#22085f',
-    secondary: document.getElementById('color-secondary')?.value || '#f5c800',
+    primary:   document.getElementById('color-primary')?.value || '#1a1a2e',
+    secondary: document.getElementById('color-secondary')?.value || '#ffffff',
   };
 }
 
@@ -979,7 +978,7 @@ function buildSchemePicker() {
   const clubColours = state.colours[rawName]
     || Object.entries(state.colours).find(([k]) => k !== '_default' && rawName.startsWith(k))?.[1]
     || state.colours['_default']
-    || { primary: '#22085f', secondary: '#f5c800' };
+    || { primary: '#1a1a2e', secondary: '#ffffff' };
   setColours(clubColours.primary, clubColours.secondary);
   updateColourPreview();
 }
@@ -1244,7 +1243,12 @@ const CREST_ALIASES = {
 
 async function getCrest(playhqName) {
   // Strip age group suffix: "Chirnside Park U12 Blue" → "CHIRNSIDE PARK"
-  const cleaned = playhqName.replace(/\s+U\d+.*$/i, '').trim().toUpperCase();
+  let cleaned = playhqName.replace(/\s+U\d+.*$/i, '').trim().toUpperCase();
+  // Joint team: "NORWOOD GOLD / HEATHMONT" → use first part "NORWOOD GOLD"
+  if (cleaned.includes(' / ')) cleaned = cleaned.split(' / ')[0].trim();
+  // Strip colour words to get to the club name: "NORWOOD GOLD" → "NORWOOD"
+  const COLOUR_WORDS = ['PURPLE','GOLD','BLUE','RED','GREEN','WHITE','BLACK','SILVER','NAVY','YELLOW','ORANGE','TEAL'];
+  COLOUR_WORDS.forEach(c => { cleaned = cleaned.replace(new RegExp('\\s+' + c + '\\s*$'), '').trim(); });
   // Resolve alias
   const key = CREST_ALIASES[cleaned] || cleaned;
   // Check cache
@@ -1669,9 +1673,9 @@ async function renderCard() {
 
     // Pills
     const leftIsNorwood = f.isHome;
-    const leftCrest  = leftIsNorwood ? state.norwood_crest : state.crests[ALIASES[oppShort]||oppShort];
-    const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.norwood_crest;
-    const ourClubPillName = (document.getElementById('club-name')?.value || 'NORWOOD').toUpperCase().split(' ').slice(0,2).join(' ');
+    const leftCrest  = leftIsNorwood ? state.ourCrest : state.crests[ALIASES[oppShort]||oppShort];
+    const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.ourCrest;
+    const ourClubPillName = (document.getElementById('club-name')?.value || 'HOME').toUpperCase().split(' ').slice(0,2).join(' ');
     const leftName   = leftIsNorwood ? ourClubPillName : oppShort;
     const rightName  = leftIsNorwood ? oppShort  : ourClubPillName;
     // Show venue under home team pill only when it differs from the dominant home venue.
@@ -2169,7 +2173,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
   }
 
   // Always reset club/competition assets on new upload so previous club doesn't persist
-  state.norwood_crest = null;
+  state.ourCrest = null;
   state.badgeImg = null;
 
   // Auto-detect team info from page title — always reset on new upload
@@ -2196,8 +2200,8 @@ document.getElementById('file-input').addEventListener('change', async e => {
       .trim();
     const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
     const clubC = state.colours[detectedClub] || state.colours['_default'];
-    const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#22085f';
-    const secondary = clubC ? (isGold ? clubC.primary   : clubC.secondary) : '#f5c800';
+    const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#1a1a2e';
+    const secondary = clubC ? (isGold ? clubC.primary   : clubC.secondary) : '#ffffff';
     setColours(primary, secondary);
 
     // Load all assets in parallel — club crest, badge, competition watermark
@@ -2206,7 +2210,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
       loadClubAssets(detectedClub),
       loadCompetitionAssets(teamInfo.league),
     ]);
-    state.norwood_crest = crestImg || null;
+    state.ourCrest = crestImg || null;
   } else {
     // teamInfo failed to parse — still reload default competition assets
     await loadCompetitionAssets('');
