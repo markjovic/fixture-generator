@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.68</span>
+    <span class="badge">Beta 0.70</span>
   </header>
 
   <!-- Left panel -->
@@ -495,16 +495,6 @@ html, body {
       <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
       <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
-      </div>
-
-      <div id="light-wm-slider-wrap" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span class="section-title">Watermark strength</span>
-          <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">100%</span>
-        </div>
-        <input type="range" id="wm-light-slider" min="0" max="100" value="100"
-          style="width:100%;accent-color:var(--accent);cursor:pointer">
-        <p style="font-size:11px;color:var(--text3);margin-top:6px">Dark cards: multiplier on 40% base. Light cards: auto-scales with brightness, then multiplied. Report % when happy.</p>
       </div>
 
     </div>
@@ -855,12 +845,11 @@ async function loadClubImage(clubName, filename, fallback) {
 
 async function loadClubAssets(clubName) {
   const [badge, monogram] = await Promise.all([
-    loadClubImage(clubName, 'badge.png',    'assets/badge.png'),
-    loadClubImage(clubName, 'monogram.png', 'assets/wm_monogram_tr.png'),
+    loadClubImage(clubName, 'badge.png',    'assets/efnl_badge.png'),
+    loadClubImage(clubName, 'monogram.png', 'assets/wm_monogram_bl.png'),
   ]);
   if (badge)    state.badgeImg = badge;
   if (monogram) {
-    state.watermarks.monogram_tr = monogram;
     state.watermarks.monogram_bl = monogram;
   }
 }
@@ -876,17 +865,19 @@ async function loadAllAssets() {
   // scheme now derived from primary/secondary colours
 
   // Badge & watermarks in parallel
-  const [wm_kicking, wm_running, wm_huddle, wm_tackle, wm_tr, wm_bl, crestNorwood] = await Promise.all([
+  const [wm_kicking, wm_running, wm_huddle, wm_tackle, wm_efnl, wm_bl, crestNorwood] = await Promise.all([
     loadImage('assets/wm_player_kicking.png'),
     loadImage('assets/wm_player_running.png'),
     loadImage('assets/wm_huddle.png'),
     loadImage('assets/wm_tackle.png'),
-    loadImage('assets/wm_monogram_tr.png'),
+    loadImage('assets/wm_efnl.png'),        // EFNL logo — top-right watermark
     loadImage('assets/wm_monogram_bl.png'),
     loadImage('assets/clubs/norwood/crest.png'),
   ]);
-  state.watermarks = { player_kicking: wm_kicking, player_running: wm_running, huddle: wm_huddle, tackle: wm_tackle, monogram_tr: wm_tr, monogram_bl: wm_bl };
+  state.watermarks = { player_kicking: wm_kicking, player_running: wm_running, huddle: wm_huddle, tackle: wm_tackle, monogram_tr: wm_efnl, monogram_bl: wm_bl };
   state.norwood_crest = crestNorwood;
+  // Load EFNL logo as the default badge (shown when club badge not found)
+  state.defaultBadge = await loadImage('assets/efnl_badge.png');
   // Load default club assets — overridden when fixture is uploaded
   const defaultClub = cfg.club_name ? cfg.club_name.replace(/ Junior Football Club$/i,'').trim() : 'Norwood';
   await loadClubAssets(defaultClub);
@@ -1300,34 +1291,34 @@ async function renderCard() {
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
   // Slider controls opacity for whichever card is active.
-  // For dark cards: slider directly sets opacity (default 40%).
-  // For light cards: base opacity scales with how light the card is —
-  //   L=0.50 (threshold) → 50%, L=0.75 (bright yellow) → 100%
-  //   clamped to [0.5, 1.0]. Slider then acts as a multiplier (0–100%) on top.
-  const sliderMult = parseFloat(document.getElementById('wm-light-slider')?.value ?? 100) / 100;
+  // For dark cards: fixed 40% opacity with screen blend.
+  // For light cards: opacity scales automatically with lightness —
+  //   L=0.50 → 50%, L=0.80+ → 100%, so yellow cards always get full opacity.
+  const sliderMult = 1.0;  // slider removed — auto-calculation only
   let playerAlpha;
   if (isLight) {
-    // Map lightness 0.50–0.80 → base alpha 0.50–1.00, then scale by slider
     const lightBase = Math.min(1.0, Math.max(0.5, (_pL - 0.50) / 0.30));
     playerAlpha = Math.min(1.0, lightBase * sliderMult);
   } else {
-    const darkDefault = 0.40;
-    playerAlpha = darkDefault * sliderMult;
+    playerAlpha = 0.40;
   }
   const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // Monogram top-right — always screen (white image, multiply would make it invisible)
+  // EFNL logo top-right — landscape image (400x320), so size by width not height
   if (state.watermarks.monogram_tr) {
-    const wm1_sz = 290;
+    const efnl_w = 260;
+    const efnl_aspect = state.watermarks.monogram_tr.naturalHeight / state.watermarks.monogram_tr.naturalWidth;
+    const efnl_h = efnl_w * efnl_aspect;
     ctx.save();
     ctx.globalAlpha = monogramAlpha * 0.9;
     ctx.globalCompositeOperation = 'screen';
-    ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
-    ctx.rotate(10 * Math.PI/180);
-    ctx.drawImage(state.watermarks.monogram_tr, -wm1_sz/2, -wm1_sz/2, wm1_sz, wm1_sz);
+    // Position: top-right corner, partially bleeding off right edge
+    ctx.translate(CARD_W - efnl_w/2 + 30, -efnl_h/2 + 30);
+    ctx.rotate(8 * Math.PI/180);
+    ctx.drawImage(state.watermarks.monogram_tr, -efnl_w/2, -efnl_h/2, efnl_w, efnl_h);
     ctx.restore();
   }
 
@@ -1609,16 +1600,19 @@ async function renderCard() {
     const rightVenue = '';
 
     // Left pill - crest on LEFT, text on RIGHT
+    // bgFallback for opp pill = secondary colour so letter initial stands out
     drawPill(ctx, xLP, ry, COL_PILL, ROW_H,
       leftIsNorwood ? nPill : oPill,
       leftCrest, leftName, leftVenue, 'left', pillTxt,
-      (leftIsNorwood ? nPill : oPill)[0]);
+      leftIsNorwood ? nPill[0] : _s,
+      leftIsNorwood ? null    : bestText(_s));
 
     // Right pill - text on LEFT, crest on RIGHT
     drawPill(ctx, xRP, ry, COL_PILL, ROW_H,
       leftIsNorwood ? oPill : nPill,
       rightCrest, rightName, rightVenue, 'right', pillTxt,
-      (leftIsNorwood ? oPill : nPill)[0]);
+      leftIsNorwood ? _s    : nPill[0],
+      leftIsNorwood ? bestText(_s) : null);
 
     // VS circle or score if game completed
     const vsR = 18;
@@ -1748,7 +1742,7 @@ async function renderCard() {
 // ── Draw pill (matches reference HTML exactly) ──────────────
 // crestSide: 'left' = crest on left, text on right (pill-left)
 //            'right' = text on left, crest on right (pill-right)
-function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide, txtColor, bgFallback) {
+function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide, txtColor, bgFallback, letterColor) {
   // Background
   const g = ctx.createLinearGradient(x, y, x+w, y);
   g.addColorStop(0, gradColors[0]||'#333');
@@ -1792,6 +1786,16 @@ function drawPill(ctx, x, y, w, h, gradColors, crestImg, name, venue, crestSide,
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     ctx.drawImage(crestImg, crestX, crestY, CREST_D, CREST_D);
+  } else {
+    // No crest — draw first letter of team name
+    const letter = (name || '?')[0].toUpperCase();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.font = `700 ${CREST_D * 0.55}px "Outfit",sans-serif`;
+    ctx.fillStyle = letterColor || txtColor || '#ffffff';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillText(letter, crestX + CREST_R, crestY + CREST_R + 1);
   }
   ctx.restore();
 
@@ -1987,12 +1991,6 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
   setColours(s, p);
-});
-
-// Light card watermark opacity slider
-document.getElementById('wm-light-slider')?.addEventListener('input', e => {
-  document.getElementById('wm-light-value').textContent = e.target.value + '%';
-  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
