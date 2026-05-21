@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.82</span>
+    <span class="badge">Beta 0.84</span>
   </header>
 
   <!-- Left panel -->
@@ -792,8 +792,7 @@ const DEFAULT_COLOURS = {
 const state = {
   config: {...DEFAULT_CONFIG},
   colours: {...DEFAULT_COLOURS},
-  scheme: "purple",
-  badgeImg: null,       // HTMLImageElement
+  scheme: "purple",  badgeImg: null,       // HTMLImageElement
   norwood_crest: null,  // HTMLImageElement — pill crest
   crests: {},           // { "MITCHAM": HTMLImageElement, ... }
   watermarks: {},       // { player_left, player_right, photo_centre, monogram_tr, monogram_bl }
@@ -1255,14 +1254,6 @@ function updateGenerateButton() {
 //  Draws the portrait fixture card at 2× scale for sharpness
 // ═══════════════════════════════════════════════════════════
 
-const CARD_W = 560, CARD_H_BASE = 800; // will expand for rows
-const SCALE = 2; // retina
-const CORNER = 20;
-const ROW_H = 54;
-const HEADER_H = 108;
-const FOOTER_H = 80; // finals block
-const PAD_X = 24, PAD_Y = 24;
-
 async function renderCard() {
   const { primary: _p, secondary: _s } = getColours();
   const teamName = (document.getElementById('team-name').value.trim() || 'TEAM NAME').toUpperCase();
@@ -1340,7 +1331,7 @@ async function renderCard() {
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // EFNL logo top-right — rotated watermark style
+  // EFNL/competition logo top-right — rotated watermark style
   if (state.watermarks.monogram_tr) {
     const efnl_w = 220;
     const efnl_aspect = state.watermarks.monogram_tr.naturalHeight / state.watermarks.monogram_tr.naturalWidth;
@@ -1350,6 +1341,7 @@ async function renderCard() {
     ctx.globalCompositeOperation = 'source-over';
     const cx = CARD_W - efnl_w/2 + 30;
     const cy = efnl_h/2 + 10;
+    ctx.translate(cx, cy);
     ctx.rotate(10 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_tr, -efnl_w/2, -efnl_h/2, efnl_w, efnl_h);
     ctx.restore();
@@ -1385,7 +1377,6 @@ async function renderCard() {
   const showRunningKicking = CARD_H >= 680;
   const showTackle         = CARD_H >= 560;
   const showHuddle         = CARD_H >= 440;
-  const REF_CARD_H = 830;
 
   // wm_huddle — centred slightly right of true centre. Size scales with card width.
   if (showHuddle && state.watermarks.huddle) {
@@ -1517,12 +1508,15 @@ async function renderCard() {
     ctx.fillText(homeVenue, hx, hy + nameSize + 36);
   }
 
-  // ── Grid layout constants (match reference) ──
-  // grid-template-columns: 24px 52px 1fr 38px 1fr
+  // ── Grid layout constants ──
+  // Fixed columns: round label and date badge stay the same width always.
+  // COL_VS and COL_GAP scale with card width so VS circle area doesn't feel cramped
+  // on wider cards. Base values are at 560px card width.
   const COL_RND  = 24;
   const COL_DATE = 52;
-  const COL_VS   = 42;  // slightly wider to fit bigger score circle
-  const COL_GAP  = 4;
+  const widthScale = CARD_W / 560;
+  const COL_VS   = Math.round(42 * widthScale);
+  const COL_GAP  = Math.round(4  * widthScale);
   const usable   = CARD_W - PAD_X*2;
   const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS - COL_GAP*4) / 2;
 
