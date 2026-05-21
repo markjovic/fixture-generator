@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.89</span>
+    <span class="badge">Beta 0.91</span>
   </header>
 
   <!-- Left panel -->
@@ -2125,6 +2125,10 @@ document.getElementById('file-input').addEventListener('change', async e => {
     return;
   }
 
+  // Always reset club/competition assets on new upload so previous club doesn't persist
+  state.norwood_crest = null;
+  state.badgeImg = null;
+
   // Auto-detect team info from page title — always reset on new upload
   const teamInfo = detectTeamInfo(text);
   if (teamInfo) {
@@ -2150,18 +2154,17 @@ document.getElementById('file-input').addEventListener('change', async e => {
     const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#22085f';
     const secondary = clubC ? (isGold ? clubC.primary   : clubC.secondary) : '#f5c800';
     setColours(primary, secondary);
-    // Load club's own crest for "our team" pill
-    getCrest(detectedClub).then(img => {
-      if (img) state.norwood_crest = img;
-    });
-    // Load club-specific badge + monogram watermarks
-    loadClubAssets(detectedClub).then(() => {
-      if (state.generated) renderCard();
-    });
-    // Load competition-specific assets (top-right watermark + default badge)
-    loadCompetitionAssets(teamInfo.league).then(() => {
-      if (state.generated) renderCard();
-    });
+
+    // Load all assets in parallel — club crest, badge, competition watermark
+    const [crestImg] = await Promise.all([
+      getCrest(detectedClub),
+      loadClubAssets(detectedClub),
+      loadCompetitionAssets(teamInfo.league),
+    ]);
+    state.norwood_crest = crestImg || null;
+  } else {
+    // teamInfo failed to parse — still reload default competition assets
+    await loadCompetitionAssets('');
   }
   // Auto-select colour scheme from team name
   // Default purple; gold only if explicitly "Gold" in name
