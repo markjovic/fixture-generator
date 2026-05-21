@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.80</span>
+    <span class="badge">Beta 0.81</span>
   </header>
 
   <!-- Left panel -->
@@ -1276,22 +1276,16 @@ async function renderCard() {
 
   await Promise.all(fixtures.map(f => getCrest(f.opponent)));
 
-  // Card width scales with height to maintain A4 portrait proportions (ratio 0.707),
-  // with a minimum of 560px so short cards never go narrower than the current design.
-  const CARD_W = Math.max(560, Math.round(CARD_H * 0.707));
-  const PAD_X = 20, PAD_TOP = 24, PAD_BOT = 26;
-  const HEADER_H = 96;
-  const ROW_H = 50, ROW_GAP = 4;
-  const BYE_H = 28;
-  const FINALS_H = hasFinals ? 68 : 0;
-  const BETWEEN = 12; // gap between header and rows
-
-  // Calculate total height
+  // Calculate total height first
   let contentH = 0;
   for (const row of allRows) {
     contentH += (row.type === 'bye' ? BYE_H : ROW_H) + ROW_GAP;
   }
   const CARD_H = PAD_TOP + HEADER_H + BETWEEN + contentH + FINALS_H + PAD_BOT;
+
+  // Card width scales with height to maintain A4 portrait proportions (ratio 0.707),
+  // with a minimum of 560px so short cards never go narrower than the current design.
+  const CARD_W = Math.max(560, Math.round(CARD_H * 0.707));
 
   const SCALE = 2;
   const canvas = document.getElementById('card-canvas');
@@ -1385,38 +1379,33 @@ async function renderCard() {
   const showHuddle         = CARD_H >= 440;
   const REF_CARD_H = 830;
 
-  // wm_huddle — centred slightly right of true centre. 15% smaller than before.
+  // wm_huddle — centred slightly right of true centre. Size scales with card width.
   if (showHuddle && state.watermarks.huddle) {
-    const wm_w = Math.round(256 * 0.85);
+    const wm_w = Math.round(CARD_W * 0.39);  // 39% of card width (≈218px at 560px)
     const wm_h = wm_w * state.watermarks.huddle.naturalHeight / state.watermarks.huddle.naturalWidth;
     drawWm(state.watermarks.huddle, CARD_W/2 + 30 - wm_w/2, (CARD_H - wm_h)/2, wm_w, wm_h);
   }
 
-  // wm_tackle — top-left, x=-20 (bleeds left). 10% smaller than before.
-  // Anchored at 20% from top. Never higher than below the badge.
+  // wm_tackle — top-left, x=-20 (bleeds left). Size scales with card width.
+  // y fixed at 100px from top (original position before % was introduced).
   if (showTackle && state.watermarks.tackle) {
-    const wm_w = Math.round(240 * 0.90);
+    const wm_w = Math.round(CARD_W * 0.39);  // 39% of card width (≈216px at 560px)
     const wm_h = wm_w * state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
-    const tackle_abs_min = PAD_TOP + 92 + 8;
-    const tackle_pct_pos = CARD_H * 0.20;
-    const tackle_y = Math.max(tackle_abs_min, tackle_pct_pos);
-    drawWm(state.watermarks.tackle, -20, tackle_y, wm_w, wm_h);
+    drawWm(state.watermarks.tackle, -20, 100, wm_w, wm_h);
   }
 
-  // wm_player_running — bottom-left, x=-33 (bleeds left)
-  // Bottom edge anchored at 20% from bottom of card.
+  // wm_player_running — bottom-left, x=-33 (bleeds left). Size scales with card width.
+  // y fixed so bottom edge is 100px from card bottom (original position).
   if (showRunningKicking && state.watermarks.player_running) {
-    const wm_w = 200;
+    const wm_w = Math.round(CARD_W * 0.36);  // 36% of card width (≈200px at 560px)
     const wm_h = wm_w * state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
-    const run_bottom = CARD_H * 0.80;
-    const run_y = run_bottom - wm_h;
-    drawWm(state.watermarks.player_running, -33, run_y, wm_w, wm_h);
+    drawWm(state.watermarks.player_running, -33, CARD_H - wm_h - 100, wm_w, wm_h);
   }
 
-  // wm_player_kicking — bottom-right, bleeds off right edge. 10% smaller than before.
-  // x positioned relative to CARD_W so it stays at the right edge as card widens.
+  // wm_player_kicking — bottom-right, bleeds off right edge. Size scales with card width.
+  // x relative to CARD_W, y fixed so bottom edge is 4% from card bottom.
   if (showRunningKicking && state.watermarks.player_kicking) {
-    const wm_w = Math.round(220 * 0.90);
+    const wm_w = Math.round(CARD_W * 0.35);  // 35% of card width (≈198px at 560px)
     const wm_h = wm_w * state.watermarks.player_kicking.naturalHeight / state.watermarks.player_kicking.naturalWidth;
     drawWm(state.watermarks.player_kicking, CARD_W - wm_w + 30, CARD_H - wm_h - CARD_H * 0.04, wm_w, wm_h);
   }
