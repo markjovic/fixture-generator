@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.106</span>
+    <span class="badge">Beta 0.107</span>
   </header>
 
   <!-- Left panel -->
@@ -1195,11 +1195,11 @@ function detectHomeVenue(results) {
   if (!total) return '';
   // Find dominant venue (≥80% of home games)
   for (const [venue, count] of Object.entries(counts)) {
-    if (count / total >= 0.8) return 'HOME VENUE: ' + venue;
+    if (count / total >= 0.8) return venue;
   }
-  // No dominant venue — list all unique venues
+  // No dominant venue — list all unique venues separated by /
   const venues = Object.keys(counts);
-  return 'HOME VENUES: ' + venues.join(' / ');
+  return venues.join(' / ');
 }
 
 
@@ -1537,7 +1537,8 @@ async function renderCard() {
   if (homeVenue) {
     ctx.font = `400 11px "Outfit",sans-serif`;
     ctx.fillStyle = headerVenueTxt;
-    ctx.fillText(homeVenue, hx, hy + nameSize + 36);
+    const venuePrefix = homeVenue.includes(' / ') ? 'HOME VENUES: ' : 'HOME VENUE: ';
+    ctx.fillText(venuePrefix + homeVenue, hx, hy + nameSize + 36);
   }
 
   // ── Grid layout constants ──
@@ -1664,8 +1665,7 @@ async function renderCard() {
     // Show venue under home team pill only when it differs from the dominant home venue.
     // homeVenue field may have "HOME VENUE: X" or "HOME VENUES: X / Y" prefix — strip it for comparison.
     const gameVenue = f.venue || '';
-    const homeVenueRaw = homeVenue.replace(/^HOME VENUES?:\s*/i, '').trim();
-    const showVenue = gameVenue && (!homeVenueRaw || gameVenue !== homeVenueRaw);
+    const showVenue = gameVenue && (!homeVenue || gameVenue !== homeVenue);
     // Venue always on the HOME team pill (left pill) — never on away pill
     const leftVenue  = showVenue ? gameVenue : '';
     const rightVenue = '';
