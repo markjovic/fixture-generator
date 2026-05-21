@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.92</span>
+    <span class="badge">Beta 0.93</span>
   </header>
 
   <!-- Left panel -->
@@ -853,16 +853,21 @@ async function loadClubAssets(clubName) {
   }
 }
 
-// Convert a league name to a folder slug: "Eastern Football Netball League" → "efnl"
-// Uses initials of significant words (strips common words like 'the','of','and','for')
+// Convert a league name to a folder slug.
+// Handles both full names ("Eastern Football Netball League" → "efnl")
+// and abbreviations ("EFNL" → "efnl").
 function leagueToSlug(leagueName) {
-  if (!leagueName) return 'efnl';
+  if (!leagueName) return '';
+  // Strip any parenthetical suffix e.g. "League (EFNL)" → "League"
+  const clean = leagueName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  // If it's already a short acronym (≤6 chars, all caps/letters), use it directly
+  if (/^[A-Z]{2,6}$/.test(clean)) return clean.toLowerCase();
+  // Otherwise derive initials from significant words
   const stop = new Set(['the','of','and','for','in','at','a','an']);
-  const initials = leagueName.trim().split(/\s+/)
+  return clean.trim().split(/\s+/)
     .filter(w => !stop.has(w.toLowerCase()))
     .map(w => w[0].toLowerCase())
-    .join('');
-  return initials || 'efnl';
+    .join('') || '';
 }
 
 // Load competition-specific badge (header fallback) and top-right watermark logo
@@ -2158,8 +2163,10 @@ document.getElementById('file-input').addEventListener('change', async e => {
       clubField.value = teamInfo.clubName;
       clubField.dataset.userEdited = '';
     }
-    // Auto-load club colours — always reset from colours.json on upload
-    const detectedClub = teamInfo.clubName || '';
+    // Normalise club name — strip "Football Club", "FC" etc for colours/asset lookup
+    const detectedClub = teamInfo.clubName
+      .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC)\s*$/i, '')
+      .trim();
     const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
     const clubC = state.colours[detectedClub] || state.colours['_default'];
     const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#22085f';
