@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.107</span>
+    <span class="badge">Beta 0.108</span>
   </header>
 
   <!-- Left panel -->
@@ -1125,27 +1125,39 @@ function detectTeamInfo(htmlText) {
     league = lm ? lm[1].trim() : '';
   }
 
-  // Derive a display team name: strip club prefix if present
-  // "Norwood U12 Purple" → "U12 Purple 2026" (use grade year + colour)
-  // Extract year from grade: "U12 - B 2026" → "2026"
+  // Derive display name and primary club
   const yearMatch = grade.match(/(\d{4})/);
   const year = yearMatch ? yearMatch[1] : '';
-  // Colour from full team name: last word if it's a colour
-  const colours = ['Purple','Gold','Blue','Red','Green','White','Black','Silver','Navy','Yellow','Orange'];
+  const COLOURS = ['Purple','Gold','Blue','Red','Green','White','Black','Silver','Navy','Yellow','Orange','Teal'];
   const words = fullTeamName.split(/[\s/]+/);
-  const colour = colours.find(c => words.includes(c)) || '';
-  // Age group from grade: "U12 - B" → "U12"
+  const colour = COLOURS.find(c => words.includes(c)) || '';
   const ageMatch = grade.match(/U(\d+)/i);
   const age = ageMatch ? 'U' + ageMatch[1] : '';
-  // Build display name: "U12 Purple 2026"
-  // For merged teams like "Norwood Gold/Heathmont U12",
-  // strip the club prefix and age suffix to get the team descriptor
-  const teamDescriptor = fullTeamName
-    .replace(new RegExp('^' + clubName + '\s*', 'i'), '')  // remove club prefix
-    .replace(/^U\d+\s*/i, '')   // remove leading age group (e.g. "U12 Purple" → "Purple")
-    .replace(/\s+U\d+.*$/i, '') // remove trailing age group
-    .trim();  // e.g. "Purple", "Gold/Heathmont"
-  const displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
+
+  // Detect joint team: "Norwood Gold/Heathmont U12" has a / before the age group
+  const teamWithoutAge = fullTeamName.replace(/\s+U\d+.*$/i, '').trim();
+  const isJoint = teamWithoutAge.includes('/');
+
+  let primaryClub, displayName;
+  if (isJoint) {
+    // "Norwood Gold/Heathmont" → primaryClub="Norwood", secondary="Heathmont"
+    const parts = teamWithoutAge.split('/');
+    // Strip colour from first part to get primary club name
+    primaryClub = parts[0].trim();
+    COLOURS.forEach(c => { primaryClub = primaryClub.replace(new RegExp('\\s+' + c + '\\s*$', 'i'), '').trim(); });
+    const secondary = parts[1].trim();
+    // displayName: "U12 Gold / Heathmont 2026"
+    displayName = [age, colour, '/', secondary, year].filter(Boolean).join(' ');
+    clubName = primaryClub;  // override parsed clubName with clean primary club
+  } else {
+    primaryClub = clubName;
+    const teamDescriptor = fullTeamName
+      .replace(new RegExp('^' + clubName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', 'i'), '')
+      .replace(/^U\d+\s*/i, '')
+      .replace(/\s+U\d+.*$/i, '')
+      .trim();
+    displayName = [age, teamDescriptor || colour, year].filter(Boolean).join(' ');
+  }
 
   return { fullTeamName, clubName, league, grade, displayName, year, colour };
 }
