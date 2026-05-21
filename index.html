@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.67</span>
+    <span class="badge">Beta 0.68</span>
   </header>
 
   <!-- Left panel -->
@@ -499,12 +499,12 @@ html, body {
 
       <div id="light-wm-slider-wrap" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span class="section-title">Watermark opacity</span>
-          <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">40%</span>
+          <span class="section-title">Watermark strength</span>
+          <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">100%</span>
         </div>
-        <input type="range" id="wm-light-slider" min="0" max="100" value="40"
+        <input type="range" id="wm-light-slider" min="0" max="100" value="100"
           style="width:100%;accent-color:var(--accent);cursor:pointer">
-        <p style="font-size:11px;color:var(--text3);margin-top:6px">Adjusts watermark visibility on both dark and light cards. Report the % when happy.</p>
+        <p style="font-size:11px;color:var(--text3);margin-top:6px">Dark cards: multiplier on 40% base. Light cards: auto-scales with brightness, then multiplied. Report % when happy.</p>
       </div>
 
     </div>
@@ -1300,10 +1300,21 @@ async function renderCard() {
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
   // Slider controls opacity for whichever card is active.
-  // Default: 40% dark (screen), 70% light (multiply — needs more to show on bright bg)
-  const sliderVal = parseFloat(document.getElementById('wm-light-slider')?.value ?? (isLight ? 70 : 40));
-  const playerAlpha   = sliderVal / 100;
-  const monogramAlpha = isLight ? 0.35 : 0.15;
+  // For dark cards: slider directly sets opacity (default 40%).
+  // For light cards: base opacity scales with how light the card is —
+  //   L=0.50 (threshold) → 50%, L=0.75 (bright yellow) → 100%
+  //   clamped to [0.5, 1.0]. Slider then acts as a multiplier (0–100%) on top.
+  const sliderMult = parseFloat(document.getElementById('wm-light-slider')?.value ?? 100) / 100;
+  let playerAlpha;
+  if (isLight) {
+    // Map lightness 0.50–0.80 → base alpha 0.50–1.00, then scale by slider
+    const lightBase = Math.min(1.0, Math.max(0.5, (_pL - 0.50) / 0.30));
+    playerAlpha = Math.min(1.0, lightBase * sliderMult);
+  } else {
+    const darkDefault = 0.40;
+    playerAlpha = darkDefault * sliderMult;
+  }
+  const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
