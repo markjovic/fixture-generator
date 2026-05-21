@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.102</span>
+    <span class="badge">Beta 0.103</span>
   </header>
 
   <!-- Left panel -->
@@ -500,11 +500,11 @@ html, body {
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span class="section-title">Watermark opacity</span>
-          <span id="wm-opacity-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">auto</span>
+          <span id="wm-opacity-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">25%</span>
         </div>
-        <input type="range" id="wm-opacity-slider" min="0" max="50" value="0"
+        <input type="range" id="wm-opacity-slider" min="0" max="50" value="25"
           style="width:100%;accent-color:var(--accent);cursor:pointer">
-        <p style="font-size:11px;color:var(--text3);margin-top:6px">0 = auto (scales with card lightness). Drag to override. Report % values when happy.</p>
+        <p style="font-size:11px;color:var(--text3);margin-top:6px">Auto-set based on card colour. Drag to override. Report % when happy.</p>
       </div>
 
     </div>
@@ -1366,13 +1366,20 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Player watermarks: source-over, opacity scales from 30% (dark) to 20% (light).
-  // Slider in Colours tab overrides when non-zero.
+  // Calculate auto opacity based on card lightness (30% dark → 20% light)
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
-  const sliderVal = parseInt(document.getElementById('wm-opacity-slider')?.value || 0);
-  const autoAlpha = 0.30 - (_pL * 0.20);  // 30% at L=0, 20% at L=1.0
-  const playerAlpha = sliderVal > 0 ? sliderVal / 100 : Math.max(0.20, Math.min(0.30, autoAlpha));
+  const autoAlpha = Math.max(0.20, Math.min(0.30, 0.30 - (_pL * 0.20)));
+
+  // If user hasn't manually moved the slider, update it to the auto value
+  const sliderEl = document.getElementById('wm-opacity-slider');
+  const valEl    = document.getElementById('wm-opacity-value');
+  if (sliderEl && !sliderEl.dataset.userSet) {
+    const autoPct = Math.round(autoAlpha * 100);
+    sliderEl.value = autoPct;
+    if (valEl) valEl.textContent = autoPct + '%';
+  }
+  const playerAlpha = parseInt(sliderEl?.value || 25) / 100;
   const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
   ctx.save();
@@ -2077,7 +2084,8 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
 
 document.getElementById('wm-opacity-slider')?.addEventListener('input', e => {
   const val = parseInt(e.target.value);
-  document.getElementById('wm-opacity-value').textContent = val === 0 ? 'auto' : val + '%';
+  document.getElementById('wm-opacity-value').textContent = val + '%';
+  e.target.dataset.userSet = 'true';
   if (state.generated) renderCard();
 });
 
