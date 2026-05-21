@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.63</span>
+    <span class="badge">Beta 0.64</span>
   </header>
 
   <!-- Left panel -->
@@ -497,7 +497,7 @@ html, body {
         <!-- populated by JS -->
       </div>
 
-      <div id="light-wm-slider-wrap" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:none">
+      <div id="light-wm-slider-wrap" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span class="section-title">Light card watermark opacity</span>
           <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">60%</span>
@@ -933,10 +933,6 @@ function updateColourPreview() {
       <div style="font-size:10px;color:var(--text3)">${s.l}</div>
     </div>`
   ).join('');
-  // Show light-card watermark slider whenever primary colour is light
-  const [,,pL] = hexToHsl(primary);
-  const sliderWrap = document.getElementById('light-wm-slider-wrap');
-  if (sliderWrap) sliderWrap.style.display = pL >= 0.50 ? 'block' : 'none';
 }
 
 function buildSchemePicker() {
@@ -1131,10 +1127,11 @@ function detectHomeVenue(results) {
   if (!total) return '';
   // Find dominant venue (≥80% of home games)
   for (const [venue, count] of Object.entries(counts)) {
-    if (count / total >= 0.8) return venue;
+    if (count / total >= 0.8) return 'HOME VENUE: ' + venue;
   }
-  // No dominant venue — return empty string (all venues will be shown)
-  return '';
+  // No dominant venue — list all unique venues
+  const venues = Object.keys(counts);
+  return 'HOME VENUES: ' + venues.join(' / ');
 }
 
 
@@ -1465,14 +1462,18 @@ async function renderCard() {
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
+  // Use bestText against primary for sublabel/venue so they're legible on light cards
+  const headerSubTxt = addAlpha(bestText(_p), 0.7);
+  const headerVenueTxt = addAlpha(bestText(_p), 0.55);
+
   if (sublabel) {
     ctx.font = `400 12px "Outfit",sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = headerSubTxt;
     ctx.fillText(sublabel.toUpperCase(), hx, hy + nameSize + 22);
   }
   if (homeVenue) {
     ctx.font = `400 11px "Outfit",sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = headerVenueTxt;
     ctx.fillText(homeVenue, hx, hy + nameSize + 36);
   }
 
