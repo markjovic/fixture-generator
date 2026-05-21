@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.59</span>
+    <span class="badge">Beta 0.60</span>
   </header>
 
   <!-- Left panel -->
@@ -495,16 +495,6 @@ html, body {
       <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
       <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
-      </div>
-
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span class="section-title">Watermark opacity</span>
-          <span id="wm-opacity-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">28%</span>
-        </div>
-        <input type="range" id="wm-opacity-slider" min="0" max="100" value="28"
-          style="width:100%;accent-color:var(--accent);cursor:pointer">
-        <p style="font-size:11px;color:var(--text3);margin-top:6px">Drag to find the right level, then report the % value to lock it in.</p>
       </div>
 
     </div>
@@ -1300,19 +1290,26 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // screen blend works on both dark and light cards — lifts greyscale watermark
-  // into the background colour. Alpha driven by the opacity slider in the Colours tab.
+  // Dark cards (L < 0.50): screen blend — watermarks lighten into card colour
+  // Light cards (L ≥ 0.50): multiply blend for players (presses dark into bg),
+  //                          screen for monogram (it's white so multiply kills it)
+  // Opacity values locked from user testing:
+  //   dark:  players 50%, monogram 15%
+  //   light: players 55% multiply (needed more to be visible), monogram 35% screen
   const [,,_pL] = hexToHsl(_p);
-  const wmAlpha = (parseFloat(document.getElementById('wm-opacity-slider')?.value || 28) / 100);
+  const isLight = _pL >= 0.50;
+  const playerBlend   = isLight ? 'multiply' : 'screen';
+  const playerAlpha   = isLight ? 0.55 : 0.50;
+  const monogramAlpha = isLight ? 0.35 : 0.15;
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // Monogram top-right
+  // Monogram top-right — always screen (white image, multiply would make it invisible)
   if (state.watermarks.monogram_tr) {
     const wm1_sz = 290;
     ctx.save();
-    ctx.globalAlpha = wmAlpha * 0.65;
+    ctx.globalAlpha = monogramAlpha * 0.9;
     ctx.globalCompositeOperation = 'screen';
     ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
     ctx.rotate(10 * Math.PI/180);
@@ -1324,7 +1321,7 @@ async function renderCard() {
   if (state.watermarks.monogram_bl) {
     const wm2_sz = 290;
     ctx.save();
-    ctx.globalAlpha = wmAlpha * 0.55;
+    ctx.globalAlpha = monogramAlpha * 0.8;
     ctx.globalCompositeOperation = 'screen';
     ctx.translate(-40 + wm2_sz/2, CARD_H + 50 - wm2_sz/2);
     ctx.rotate(-8 * Math.PI/180);
@@ -1332,11 +1329,11 @@ async function renderCard() {
     ctx.restore();
   }
 
-  // Helper: draw a watermark image at given position with shared blend/alpha
+  // Helper: draw a player watermark with the adaptive blend/alpha
   function drawWm(img, x, y, w, h) {
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = wmAlpha;
+    ctx.globalCompositeOperation = playerBlend;
+    ctx.globalAlpha = playerAlpha;
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
   }
@@ -1963,12 +1960,6 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
   setColours(s, p);
-});
-
-// Watermark opacity slider
-document.getElementById('wm-opacity-slider')?.addEventListener('input', e => {
-  document.getElementById('wm-opacity-value').textContent = e.target.value + '%';
-  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
