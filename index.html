@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.62</span>
+    <span class="badge">Beta 0.63</span>
   </header>
 
   <!-- Left panel -->
@@ -933,6 +933,10 @@ function updateColourPreview() {
       <div style="font-size:10px;color:var(--text3)">${s.l}</div>
     </div>`
   ).join('');
+  // Show light-card watermark slider whenever primary colour is light
+  const [,,pL] = hexToHsl(primary);
+  const sliderWrap = document.getElementById('light-wm-slider-wrap');
+  if (sliderWrap) sliderWrap.style.display = pL >= 0.50 ? 'block' : 'none';
 }
 
 function buildSchemePicker() {
@@ -1310,10 +1314,6 @@ async function renderCard() {
     ? (parseFloat(document.getElementById('wm-light-slider')?.value || 60) / 100)
     : 0.50;
   const monogramAlpha = isLight ? 0.35 : 0.15;
-
-  // Show/hide slider based on card lightness
-  const sliderWrap = document.getElementById('light-wm-slider-wrap');
-  if (sliderWrap) sliderWrap.style.display = isLight ? 'block' : 'none';
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
