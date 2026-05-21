@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.60</span>
+    <span class="badge">Beta 0.61</span>
   </header>
 
   <!-- Left panel -->
@@ -1290,16 +1290,13 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Dark cards (L < 0.50): screen blend — watermarks lighten into card colour
-  // Light cards (L ≥ 0.50): multiply blend for players (presses dark into bg),
-  //                          screen for monogram (it's white so multiply kills it)
-  // Opacity values locked from user testing:
-  //   dark:  players 50%, monogram 15%
-  //   light: players 55% multiply (needed more to be visible), monogram 35% screen
+  // Dark cards: screen blend at 50% — greyscale silhouettes lighten into card colour
+  // Light cards: invert filter + screen — dark silhouettes become light,
+  //              then screen lifts them visibly above the yellow/light background.
+  //              Monogram is always screen (it's white, invert not needed).
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
-  const playerBlend   = isLight ? 'multiply' : 'screen';
-  const playerAlpha   = isLight ? 0.55 : 0.50;
+  const playerAlpha   = isLight ? 0.60 : 0.50;
   const monogramAlpha = isLight ? 0.35 : 0.15;
 
   ctx.save();
@@ -1329,11 +1326,13 @@ async function renderCard() {
     ctx.restore();
   }
 
-  // Helper: draw a player watermark with the adaptive blend/alpha
+  // Helper: draw player watermark — on light cards, invert+screen so silhouettes
+  // appear as lighter tones above the background rather than disappearing into it
   function drawWm(img, x, y, w, h) {
     ctx.save();
-    ctx.globalCompositeOperation = playerBlend;
+    ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = playerAlpha;
+    if (isLight) ctx.filter = 'invert(1)';
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
   }
