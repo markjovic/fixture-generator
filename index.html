@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.109</span>
+    <span class="badge">Beta 0.110</span>
   </header>
 
   <!-- Left panel -->
@@ -1002,6 +1002,7 @@ function shortName(playhqName) {
   return playhqName
     .replace(/\s+U\d+.*$/i, '')           // strip age group and everything after
     .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|Junior\s+Football|Football|FC|JFC|Sports\s+Club|SC)\s*$/i, '') // strip club suffixes
+    .replace(/\s*\/\s*/g, ' / ')          // normalise slash spacing
     .trim().toUpperCase();
 }
 const ALIASES = {
@@ -1673,11 +1674,13 @@ async function renderCard() {
 
     // Pills
     const leftIsNorwood = f.isHome;
-    const leftCrest  = leftIsNorwood ? state.ourCrest : state.crests[ALIASES[oppShort]||oppShort];
-    const rightCrest = leftIsNorwood ? state.crests[ALIASES[oppShort]||oppShort] : state.ourCrest;
+    // Look up opp crest via getCrest so joint-team stripping logic applies
+    const oppCrest = await getCrest(f.opponent);
+    const leftCrest  = leftIsNorwood ? state.ourCrest : oppCrest;
+    const rightCrest = leftIsNorwood ? oppCrest : state.ourCrest;
     const ourClubPillName = (document.getElementById('club-name')?.value || 'HOME').toUpperCase().split(' ').slice(0,2).join(' ');
     const leftName   = leftIsNorwood ? ourClubPillName : oppShort;
-    const rightName  = leftIsNorwood ? oppShort  : ourClubPillName;
+    const rightName  = leftIsNorwood ? oppShort : ourClubPillName;
     // Show venue under home team pill only when it differs from the dominant home venue.
     // homeVenue field may have "HOME VENUE: X" or "HOME VENUES: X / Y" prefix — strip it for comparison.
     const gameVenue = f.venue || '';
