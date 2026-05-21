@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.57</span>
+    <span class="badge">Beta 0.58</span>
   </header>
 
   <!-- Left panel -->
@@ -1290,13 +1290,10 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Blend mode adapts to card lightness:
-  //   dark card  → 'screen'   (watermark lightens into background colour)
-  //   light card → 'multiply' (watermark darkens into background colour)
-  // Opacity is kept very low so watermarks are a subtle hint, not a feature.
+  // screen blend works on both dark and light cards — lifts greyscale watermark
+  // into the background colour. Alpha tuned so they're subtle but visible.
   const [,,_pL] = hexToHsl(_p);
-  const wmBlend = _pL > 0.50 ? 'multiply' : 'screen';
-  const wmAlpha = _pL > 0.50 ? 0.18 : 0.13;  // slightly stronger on light (multiply needs it)
+  const wmAlpha = _pL > 0.55 ? 0.35 : 0.28;
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
@@ -1305,8 +1302,8 @@ async function renderCard() {
   if (state.watermarks.monogram_tr) {
     const wm1_sz = 290;
     ctx.save();
-    ctx.globalAlpha = wmAlpha * 0.7;
-    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = wmAlpha * 0.65;
+    ctx.globalCompositeOperation = 'screen';
     ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
     ctx.rotate(10 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_tr, -wm1_sz/2, -wm1_sz/2, wm1_sz, wm1_sz);
@@ -1317,8 +1314,8 @@ async function renderCard() {
   if (state.watermarks.monogram_bl) {
     const wm2_sz = 290;
     ctx.save();
-    ctx.globalAlpha = wmAlpha * 0.6;
-    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = wmAlpha * 0.55;
+    ctx.globalCompositeOperation = 'screen';
     ctx.translate(-40 + wm2_sz/2, CARD_H + 50 - wm2_sz/2);
     ctx.rotate(-8 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_bl, -wm2_sz/2, -wm2_sz/2, wm2_sz, wm2_sz);
@@ -1328,7 +1325,7 @@ async function renderCard() {
   // Helper: draw a watermark image at given position with shared blend/alpha
   function drawWm(img, x, y, w, h) {
     ctx.save();
-    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = wmAlpha;
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
