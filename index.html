@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.55</span>
+    <span class="badge">Beta 0.56</span>
   </header>
 
   <!-- Left panel -->
@@ -866,15 +866,16 @@ async function loadAllAssets() {
   // scheme now derived from primary/secondary colours
 
   // Badge & watermarks in parallel
-  const [wm_pl, wm_pr, wm_ph, wm_tr, wm_bl, crestNorwood] = await Promise.all([
-    loadImage('assets/wm_player_left.png'),
-    loadImage('assets/wm_player_right.png'),
-    loadImage('assets/wm_photo_centre.png'),
+  const [wm_kicking, wm_running, wm_huddle, wm_tackle, wm_tr, wm_bl, crestNorwood] = await Promise.all([
+    loadImage('assets/wm_player_kicking.png'),
+    loadImage('assets/wm_player_running.png'),
+    loadImage('assets/wm_huddle.png'),
+    loadImage('assets/wm_tackle.png'),
     loadImage('assets/wm_monogram_tr.png'),
     loadImage('assets/wm_monogram_bl.png'),
     loadImage('assets/clubs/norwood/crest.png'),
   ]);
-  state.watermarks = { player_left: wm_pl, player_right: wm_pr, photo_centre: wm_ph, monogram_tr: wm_tr, monogram_bl: wm_bl };
+  state.watermarks = { player_kicking: wm_kicking, player_running: wm_running, huddle: wm_huddle, tackle: wm_tackle, monogram_tr: wm_tr, monogram_bl: wm_bl };
   state.norwood_crest = crestNorwood;
   // Load default club assets — overridden when fixture is uploaded
   const defaultClub = cfg.club_name ? cfg.club_name.replace(/ Junior Football Club$/i,'').trim() : 'Norwood';
@@ -1288,20 +1289,19 @@ async function renderCard() {
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // ── Watermarks — blend mode depends on background lightness ──
-  // screen = lightens (good on dark bg), multiply = darkens (good on light bg)
-  const [,,_pL] = hexToHsl(_p);
-  const wmBlend = 'screen';
-  const wmAlphaBoost = _pL > 0.55 ? 2.5 : 1.0;
+  // ── Watermarks ────────────────────────────────────────────────────────────
+  // All watermark PNGs are pre-processed RGBA (greyscale, pre-dimmed, pre-alpha).
+  // Draw with source-over — no manual blend mode or alpha needed.
+  // Clip to card rounded rect so bleeds are clean.
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
 
-  // Monogram top-right
+  // Monogram top-right (screen blend, very low alpha)
   if (state.watermarks.monogram_tr) {
     const wm1_sz = 290;
     ctx.save();
-    ctx.globalAlpha = Math.min(1, 0.08 * wmAlphaBoost);
-    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = 0.08;
+    ctx.globalCompositeOperation = 'screen';
     ctx.translate(CARD_W + 40 - wm1_sz/2, -50 + wm1_sz/2);
     ctx.rotate(10 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_tr, -wm1_sz/2, -wm1_sz/2, wm1_sz, wm1_sz);
@@ -1312,57 +1312,52 @@ async function renderCard() {
   if (state.watermarks.monogram_bl) {
     const wm2_sz = 290;
     ctx.save();
-    ctx.globalAlpha = Math.min(1, 0.07 * wmAlphaBoost);
-    ctx.globalCompositeOperation = wmBlend;
+    ctx.globalAlpha = 0.07;
+    ctx.globalCompositeOperation = 'screen';
     ctx.translate(-40 + wm2_sz/2, CARD_H + 50 - wm2_sz/2);
     ctx.rotate(-8 * Math.PI/180);
     ctx.drawImage(state.watermarks.monogram_bl, -wm2_sz/2, -wm2_sz/2, wm2_sz, wm2_sz);
     ctx.restore();
   }
 
-  // Centre photo watermark
-  if (state.watermarks.photo_centre) {
-    ctx.save();
-    ctx.globalCompositeOperation = wmBlend;
-    ctx.globalAlpha = wmBlend === 'multiply' ? 0.5 : 1;
-    const wm3_w = 364;
-    const wm3_aspect = state.watermarks.photo_centre.naturalHeight / state.watermarks.photo_centre.naturalWidth;
-    const wm3_h = wm3_w * wm3_aspect;
-    ctx.translate(CARD_W/2 - 20, CARD_H/2 + 10);
-    ctx.rotate(4 * Math.PI/180);
-    ctx.drawImage(state.watermarks.photo_centre, -wm3_w/2, -wm3_h/2, wm3_w, wm3_h);
-    ctx.restore();
+  // wm_huddle — centred, slightly right of true centre (310px)
+  if (state.watermarks.huddle) {
+    const wm_w = 256;
+    const wm_aspect = state.watermarks.huddle.naturalHeight / state.watermarks.huddle.naturalWidth;
+    const wm_h = wm_w * wm_aspect;
+    const wm_x = 310 - wm_w / 2;          // centre at 310px (slightly right of card centre)
+    const wm_y = (CARD_H - wm_h) / 2;     // vertically centred
+    ctx.drawImage(state.watermarks.huddle, wm_x, wm_y, wm_w, wm_h);
   }
 
-  // Player LEFT - positioned from bottom, matching reference: bottom:270px, left:-10px
-  if (state.watermarks.player_left) {
-    ctx.save();
-    ctx.globalCompositeOperation = wmBlend;
-    ctx.globalAlpha = wmBlend === 'multiply' ? 0.55 : 1;
-    const wm4_w = 126;
-    const wm4_aspect = state.watermarks.player_left.naturalHeight / state.watermarks.player_left.naturalWidth;
-    const wm4_h = wm4_w * wm4_aspect;
-    // bottom:270px left:-10px rotate(-3deg)
-    const wm4_x = -10, wm4_y = CARD_H - 270 - wm4_h;
-    ctx.translate(wm4_x + wm4_w/2, wm4_y + wm4_h/2);
-    ctx.rotate(-3 * Math.PI/180);
-    ctx.drawImage(state.watermarks.player_left, -wm4_w/2, -wm4_h/2, wm4_w, wm4_h);
-    ctx.restore();
+  // wm_tackle — top-left, below badge, x=-20 (bleeds left), top at 12% of card height
+  if (state.watermarks.tackle) {
+    const wm_w = 240;
+    const wm_aspect = state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
+    const wm_h = wm_w * wm_aspect;
+    const wm_x = -20;
+    const wm_y = Math.max(PAD_TOP + 92 + 8, CARD_H * 0.12);  // below badge, min 12% from top
+    ctx.drawImage(state.watermarks.tackle, wm_x, wm_y, wm_w, wm_h);
   }
 
-  // Player RIGHT - bottom:20px right:-10px rotate(3deg)
-  if (state.watermarks.player_right) {
-    ctx.save();
-    ctx.globalCompositeOperation = wmBlend;
-    ctx.globalAlpha = wmBlend === 'multiply' ? 0.55 : 1;
-    const wm5_w = 200;
-    const wm5_aspect = state.watermarks.player_right.naturalHeight / state.watermarks.player_right.naturalWidth;
-    const wm5_h = wm5_w * wm5_aspect;
-    const wm5_x = CARD_W - 10 - wm5_w, wm5_y = CARD_H - 20 - wm5_h;
-    ctx.translate(wm5_x + wm5_w/2, wm5_y + wm5_h/2);
-    ctx.rotate(3 * Math.PI/180);
-    ctx.drawImage(state.watermarks.player_right, -wm5_w/2, -wm5_h/2, wm5_w, wm5_h);
-    ctx.restore();
+  // wm_player_running — bottom-left, x=-33 (bleeds left), vertically centred at 72% of card
+  if (state.watermarks.player_running) {
+    const wm_w = 200;
+    const wm_aspect = state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
+    const wm_h = wm_w * wm_aspect;
+    const wm_x = -33;
+    const wm_y = CARD_H * 0.72 - wm_h / 2;
+    ctx.drawImage(state.watermarks.player_running, wm_x, wm_y, wm_w, wm_h);
+  }
+
+  // wm_player_kicking — bottom-right, x=370 (bleeds right), bottom at 4% from card bottom
+  if (state.watermarks.player_kicking) {
+    const wm_w = 220;
+    const wm_aspect = state.watermarks.player_kicking.naturalHeight / state.watermarks.player_kicking.naturalWidth;
+    const wm_h = wm_w * wm_aspect;
+    const wm_x = 370;
+    const wm_y = CARD_H - wm_h - CARD_H * 0.04;
+    ctx.drawImage(state.watermarks.player_kicking, wm_x, wm_y, wm_w, wm_h);
   }
 
   // Dot grid
@@ -1385,15 +1380,35 @@ async function renderCard() {
 
   if (state.badgeImg) {
     const MAX_BH = 92, MAX_BW = 92;
-    const bh = Math.min(MAX_BH, MAX_BW * state.badgeImg.naturalHeight / state.badgeImg.naturalWidth);
-    const bw = Math.min(MAX_BW, MAX_BH * state.badgeImg.naturalWidth / state.badgeImg.naturalHeight);
-    // Gold glow matching reference: filter:drop-shadow(0 2px 10px rgba(245,200,0,0.45))
+    // Crop badge to its content bounds using an offscreen canvas,
+    // so the shield fills the target size rather than leaving black padding
+    const bcv = document.createElement('canvas');
+    bcv.width = state.badgeImg.naturalWidth;
+    bcv.height = state.badgeImg.naturalHeight;
+    const bctx = bcv.getContext('2d');
+    bctx.drawImage(state.badgeImg, 0, 0);
+    const bpx = bctx.getImageData(0, 0, bcv.width, bcv.height).data;
+    let bx0=bcv.width, by0=bcv.height, bx1=0, by1=0;
+    for (let py=0; py<bcv.height; py++) {
+      for (let px=0; px<bcv.width; px++) {
+        const i=(py*bcv.width+px)*4;
+        if (bpx[i]+bpx[i+1]+bpx[i+2]>30) {
+          if(px<bx0)bx0=px; if(px>bx1)bx1=px;
+          if(py<by0)by0=py; if(py>by1)by1=py;
+        }
+      }
+    }
+    // Draw just the content region scaled to fit MAX_BW x MAX_BH
+    const contentW = bx1-bx0+1, contentH = by1-by0+1;
+    const bscale = Math.min(MAX_BW/contentW, MAX_BH/contentH);
+    const bw = Math.round(contentW * bscale);
+    const bh = Math.round(contentH * bscale);
     ctx.save();
     ctx.shadowColor = addAlpha(_s, 0.85);
     ctx.shadowBlur = 28;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
-    ctx.drawImage(state.badgeImg, hx, hy, bw, bh);
+    ctx.drawImage(state.badgeImg, bx0, by0, contentW, contentH, hx, hy, bw, bh);
     ctx.restore();
     hx += bw + 14;
   }
