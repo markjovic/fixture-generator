@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.61</span>
+    <span class="badge">Beta 0.62</span>
   </header>
 
   <!-- Left panel -->
@@ -495,6 +495,16 @@ html, body {
       <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
       <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
         <!-- populated by JS -->
+      </div>
+
+      <div id="light-wm-slider-wrap" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span class="section-title">Light card watermark opacity</span>
+          <span id="wm-light-value" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font-card)">60%</span>
+        </div>
+        <input type="range" id="wm-light-slider" min="0" max="100" value="60"
+          style="width:100%;accent-color:var(--accent);cursor:pointer">
+        <p style="font-size:11px;color:var(--text3);margin-top:6px">Only shown for light backgrounds. Report the % when happy.</p>
       </div>
 
     </div>
@@ -1296,8 +1306,14 @@ async function renderCard() {
   //              Monogram is always screen (it's white, invert not needed).
   const [,,_pL] = hexToHsl(_p);
   const isLight = _pL >= 0.50;
-  const playerAlpha   = isLight ? 0.60 : 0.50;
+  const playerAlpha   = isLight
+    ? (parseFloat(document.getElementById('wm-light-slider')?.value || 60) / 100)
+    : 0.50;
   const monogramAlpha = isLight ? 0.35 : 0.15;
+
+  // Show/hide slider based on card lightness
+  const sliderWrap = document.getElementById('light-wm-slider-wrap');
+  if (sliderWrap) sliderWrap.style.display = isLight ? 'block' : 'none';
 
   ctx.save();
   ctx.beginPath(); roundRect(ctx, 0, 0, CARD_W, CARD_H, 20); ctx.clip();
@@ -1959,6 +1975,12 @@ document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
   setColours(s, p);
+});
+
+// Light card watermark opacity slider
+document.getElementById('wm-light-slider')?.addEventListener('input', e => {
+  document.getElementById('wm-light-value').textContent = e.target.value + '%';
+  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
