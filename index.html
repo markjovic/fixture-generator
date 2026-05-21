@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.104</span>
+    <span class="badge">Beta 0.106</span>
   </header>
 
   <!-- Left panel -->
@@ -1478,16 +1478,18 @@ async function renderCard() {
       }
     }
     // Draw just the content region scaled to fit MAX_BW x MAX_BH
+    // Left-anchored (no horizontal centering), vertically centred within MAX_BH
     const contentW = bx1-bx0+1, contentH = by1-by0+1;
     const bscale = Math.min(MAX_BW/contentW, MAX_BH/contentH);
     const bw = Math.round(contentW * bscale);
     const bh = Math.round(contentH * bscale);
+    const bOffY = Math.round((MAX_BH - bh) / 2);
     ctx.save();
     ctx.shadowColor = addAlpha(_s, 0.85);
     ctx.shadowBlur = 28;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
-    ctx.drawImage(state.badgeImg, bx0, by0, contentW, contentH, hx, hy, bw, bh);
+    ctx.drawImage(state.badgeImg, bx0, by0, contentW, contentH, hx, hy + bOffY, bw, bh);
     ctx.restore();
     hx += bw + 14;
   }
