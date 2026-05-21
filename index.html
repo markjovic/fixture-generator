@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.75</span>
+    <span class="badge">Beta 0.76</span>
   </header>
 
   <!-- Left panel -->
@@ -845,7 +845,7 @@ async function loadClubImage(clubName, filename, fallback) {
 
 async function loadClubAssets(clubName) {
   const [badge, monogram] = await Promise.all([
-    loadClubImage(clubName, 'badge.png',    'assets/efnl_badge.png'),
+    loadClubImage(clubName, 'badge.png',    'assets/badge.png'),
     loadClubImage(clubName, 'monogram.png', 'assets/wm_monogram_bl.png'),
   ]);
   if (badge)    state.badgeImg = badge;
@@ -877,10 +877,10 @@ async function loadCompetitionAssets(leagueName) {
   ]);
   // badge: use as defaultBadge (shown when no club badge found)
   if (badge) state.defaultBadge = badge;
-  else        state.defaultBadge = await loadImage('assets/efnl_badge.png');
+  else        state.defaultBadge = await loadImage('assets/badge.png');
   // wm logo: top-right watermark
   if (wm) state.watermarks.monogram_tr = wm;
-  else    state.watermarks.monogram_tr = await loadImage('assets/wm_efnl.png');
+  else    state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
 }
 
 async function loadAllAssets() {
@@ -899,15 +899,15 @@ async function loadAllAssets() {
     loadImage('assets/wm_player_running.png'),
     loadImage('assets/wm_huddle.png'),
     loadImage('assets/wm_tackle.png'),
-    loadImage('assets/wm_efnl.png'),        // EFNL logo — top-right watermark
+    loadImage('assets/wm_logo.png'),        // competition logo — top-right watermark
     loadImage('assets/wm_monogram_bl.png'),
     loadImage('assets/clubs/norwood/crest.png'),
   ]);
   state.watermarks = { player_kicking: wm_kicking, player_running: wm_running, huddle: wm_huddle, tackle: wm_tackle, monogram_tr: wm_efnl, monogram_bl: wm_bl };
   state.norwood_crest = crestNorwood;
   state.competition = 'efnl'; // default competition slug
-  // Load EFNL logo as the default badge (shown when club badge not found)
-  state.defaultBadge = await loadImage('assets/efnl_badge.png');
+  // Load default badge and watermark logo
+  state.defaultBadge = await loadImage('assets/badge.png');
   // Load default club assets — overridden when fixture is uploaded
   const defaultClub = cfg.club_name ? cfg.club_name.replace(/ Junior Football Club$/i,'').trim() : 'Norwood';
   await loadClubAssets(defaultClub);
