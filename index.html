@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.85</span>
+    <span class="badge">Beta 0.86</span>
   </header>
 
   <!-- Left panel -->
@@ -1386,19 +1386,17 @@ async function renderCard() {
   }
 
   // wm_tackle — top-left, x=-20 (bleeds left). Size scales with card width.
-  // y fixed at 100px from top (original position before % was introduced).
   if (showTackle && state.watermarks.tackle) {
-    const wm_w = Math.round(CARD_W * 0.39);  // 39% of card width (≈216px at 560px)
+    const wm_w = Math.round(CARD_W * 0.39 * 0.95);
     const wm_h = wm_w * state.watermarks.tackle.naturalHeight / state.watermarks.tackle.naturalWidth;
-    drawWm(state.watermarks.tackle, -20, 150, wm_w, wm_h);
+    drawWm(state.watermarks.tackle, -20, 135, wm_w, wm_h);
   }
 
-  // wm_player_running — bottom-left, x=-33 (bleeds left). Size scales with card width.
-  // y fixed so bottom edge is 100px from card bottom (original position).
+  // wm_player_running — bottom-left, x=-55 (bleeds left). Size scales with card width.
   if (showRunningKicking && state.watermarks.player_running) {
-    const wm_w = Math.round(CARD_W * 0.36);  // 36% of card width (≈200px at 560px)
+    const wm_w = Math.round(CARD_W * 0.36 * 0.95);
     const wm_h = wm_w * state.watermarks.player_running.naturalHeight / state.watermarks.player_running.naturalWidth;
-    drawWm(state.watermarks.player_running, -33, CARD_H - wm_h - 150, wm_w, wm_h);
+    drawWm(state.watermarks.player_running, -55, CARD_H - wm_h - 135, wm_w, wm_h);
   }
 
   // wm_player_kicking — bottom-right, bleeds off right edge. Size scales with card width.
