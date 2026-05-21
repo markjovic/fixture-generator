@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.93</span>
+    <span class="badge">Beta 0.97</span>
   </header>
 
   <!-- Left panel -->
@@ -853,7 +853,20 @@ async function loadClubAssets(clubName) {
   }
 }
 
-// Convert a league name to a folder slug.
+// Expand known league abbreviations to full names for display
+const LEAGUE_ALIASES = {
+  'EFNL': 'Eastern Football Netball League',
+  'AFL':  'AFL',
+  'EDFL': 'Essendon District Football League',
+  'VAFA': 'Victorian Amateur Football Association',
+  'NFL':  'Northern Football League',
+  'SFL':  'Southern Football League',
+};
+
+function expandLeagueName(name) {
+  if (!name) return name;
+  return LEAGUE_ALIASES[name.trim().toUpperCase()] || name;
+}
 // Handles both full names ("Eastern Football Netball League" → "efnl")
 // and abbreviations ("EFNL" → "efnl").
 function leagueToSlug(leagueName) {
@@ -989,7 +1002,7 @@ function fmtTime(s) {
 function shortName(playhqName) {
   return playhqName
     .replace(/\s+U\d+.*$/i, '')           // strip age group and everything after
-    .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC|Junior\s+FC|Sports\s+Club|SC)\s*$/i, '') // strip club suffixes
+    .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|Junior\s+Football|Football|FC|JFC|Sports\s+Club|SC)\s*$/i, '') // strip club suffixes
     .trim().toUpperCase();
 }
 const ALIASES = {
@@ -1087,11 +1100,27 @@ function detectTeamInfo(htmlText) {
     clubName     = mA[2].trim();
     league       = mA[3].trim();
     grade        = mA[4].trim();
+    // If league from title looks like an abbreviation (≤6 chars), try to get full name from body
+    if (league.length <= 6) {
+      const leagueEl = doc.querySelector('[class*="sc-1ttrao6-6"]');
+      if (leagueEl) {
+        const bodyLeague = leagueEl.textContent.split(',')[0].trim();
+        if (bodyLeague.length > league.length) league = bodyLeague;
+      }
+    }
   } else if (mB) {
     fullTeamName = mB[1].trim();
     clubName     = mB[2].trim();
-    league       = '';   // not present in title
     grade        = mB[3].trim();
+    // League not in title — scrape from the specific PlayHQ element that contains it
+    // class "sc-1ttrao6-6" is present on the div containing "League, League, year"
+    league = '';
+    const leagueEl = doc.querySelector('[class*="sc-1ttrao6-6"]');
+    if (leagueEl) {
+      // Text is "Eastern Football Netball League, Eastern Football Netball League, 2026"
+      // Take just the first comma-delimited segment
+      league = leagueEl.textContent.split(',')[0].trim();
+    }
   } else {
     return null;
   }
@@ -1327,23 +1356,25 @@ async function renderCard() {
   ctx.fill();
 
   // ── Watermarks ────────────────────────────────────────────────────────────
-  // Dark cards: screen blend at 50% — greyscale silhouettes lighten into card colour
-  // Light cards: invert filter + screen — dark silhouettes become light,
-  //              then screen lifts them visibly above the yellow/light background.
-  //              Monogram is always screen (it's white, invert not needed).
+  // Dark cards (L < 0.50):       screen blend, 40% opacity
+  // Mid-light cards (0.50–0.75): multiply blend, opacity scales with lightness
+  // Very light/white (L > 0.75): screen blend, low opacity — multiply makes solid grey blocks on white
   const [,,_pL] = hexToHsl(_p);
-  const isLight = _pL >= 0.50;
-  // Slider controls opacity for whichever card is active.
-  // For dark cards: fixed 40% opacity with screen blend.
-  // For light cards: opacity scales automatically with lightness —
-  //   L=0.50 → 50%, L=0.80+ → 100%, so yellow cards always get full opacity.
-  const sliderMult = 1.0;  // slider removed — auto-calculation only
-  let playerAlpha;
-  if (isLight) {
-    const lightBase = Math.min(1.0, Math.max(0.5, (_pL - 0.50) / 0.30));
-    playerAlpha = Math.min(1.0, lightBase * sliderMult);
-  } else {
+  const isLight   = _pL >= 0.50;
+  const isVeryLight = _pL > 0.75;
+
+  let playerBlend, playerAlpha;
+  if (!isLight) {
+    playerBlend = 'screen';
     playerAlpha = 0.40;
+  } else if (isVeryLight) {
+    playerBlend = 'screen';
+    // On near-white cards screen barely shows — use low opacity, just a hint
+    playerAlpha = Math.min(0.25, (_pL - 0.75) / 0.25 * 0.25);
+  } else {
+    playerBlend = 'multiply';
+    // 0.50→50%, 0.75→100%
+    playerAlpha = Math.min(1.0, Math.max(0.5, (_pL - 0.50) / 0.25));
   }
   const monogramAlpha = isLight ? Math.min(0.6, 0.35 + (_pL - 0.50)) : 0.15;
 
@@ -1378,11 +1409,10 @@ async function renderCard() {
     ctx.restore();
   }
 
-  // drawWm: dark cards → screen blend (silhouettes lighten into bg colour)
-  //         light cards → multiply blend (dark greyscale presses into bright bg)
+  // drawWm: blend mode and alpha adapt to card lightness (see above)
   function drawWm(img, x, y, w, h) {
     ctx.save();
-    ctx.globalCompositeOperation = isLight ? 'multiply' : 'screen';
+    ctx.globalCompositeOperation = playerBlend;
     ctx.globalAlpha = playerAlpha;
     ctx.drawImage(img, x, y, w, h);
     ctx.restore();
@@ -2156,7 +2186,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
       nameField.dataset.userEdited = '';
     }
     if (sublabelField) {
-      sublabelField.value = teamInfo.league;
+      sublabelField.value = expandLeagueName(teamInfo.league);
       sublabelField.dataset.userEdited = '';
     }
     if (clubField) {
