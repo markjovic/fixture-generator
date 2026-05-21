@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.88</span>
+    <span class="badge">Beta 0.89</span>
   </header>
 
   <!-- Left panel -->
@@ -982,7 +982,10 @@ function fmtTime(s) {
   return `${h}:${mi.toString().padStart(2,'0')}`;
 }
 function shortName(playhqName) {
-  return playhqName.replace(/\s+U\d+(\s+\w+)?$/i,'').trim().toUpperCase();
+  return playhqName
+    .replace(/\s+U\d+.*$/i, '')           // strip age group and everything after
+    .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC|Junior\s+FC|Sports\s+Club|SC)\s*$/i, '') // strip club suffixes
+    .trim().toUpperCase();
 }
 const ALIASES = {
   'STH BELGRAVE':       'SOUTH BELGRAVE',
