@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.111</span>
+    <span class="badge">Beta 0.112</span>
   </header>
 
   <!-- Left panel -->
@@ -1335,6 +1335,7 @@ async function renderCard() {
 
   // Layout constants — must be declared before height calculation
   const PAD_X = 20, PAD_TOP = 24, PAD_BOT = 26;
+  const YEAR_BAR_H = 34;  // "2026 FIXTURES" bar above the header
   const HEADER_H = 96;
   const ROW_H = 50, ROW_GAP = 4;
   const BYE_H = 28;
@@ -1346,7 +1347,7 @@ async function renderCard() {
   for (const row of allRows) {
     contentH += (row.type === 'bye' ? BYE_H : ROW_H) + ROW_GAP;
   }
-  const CARD_H = PAD_TOP + HEADER_H + BETWEEN + contentH + FINALS_H + PAD_BOT;
+  const CARD_H = PAD_TOP + YEAR_BAR_H + 8 + HEADER_H + BETWEEN + contentH + FINALS_H + PAD_BOT;
 
   // Card width scales with height to maintain A4 portrait proportions (ratio 0.707),
   // with a minimum of 560px so short cards never go narrower than the current design.
@@ -1471,9 +1472,32 @@ async function renderCard() {
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 
+  // ── Year bar ──
+  // Extract year from teamName (e.g. "U12 PURPLE 2026" → year="2026", teamName="U12 PURPLE")
+  const yearMatch2 = teamName.match(/\b(20\d{2})\b/);
+  const cardYear = yearMatch2 ? yearMatch2[1] : '';
+  const teamNameNoYear = teamName.replace(/\s*\b20\d{2}\b\s*/g, '').trim();
+  const yearBarText = cardYear ? cardYear + ' FIXTURES' : 'FIXTURES';
+
+  // Draw year bar — centred, secondary colour, sized between team name and club name
+  ctx.font = `600 22px "Outfit",sans-serif`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = _s;
+  ctx.fillText(yearBarText, CARD_W / 2, PAD_TOP);
+  // Subtle separator line
+  const lineY = PAD_TOP + YEAR_BAR_H - 4;
+  const lineGrad = ctx.createLinearGradient(PAD_X, 0, CARD_W - PAD_X, 0);
+  lineGrad.addColorStop(0, 'transparent');
+  lineGrad.addColorStop(0.2, addAlpha(_s, 0.4));
+  lineGrad.addColorStop(0.8, addAlpha(_s, 0.4));
+  lineGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = lineGrad;
+  ctx.fillRect(PAD_X, lineY, CARD_W - PAD_X * 2, 1.5);
+
   // ── Header ──
   const ac = _s;
-  let hx = PAD_X, hy = PAD_TOP;
+  let hx = PAD_X, hy = PAD_TOP + YEAR_BAR_H + 8;  // shifted down below year bar
 
   if (state.badgeImg) {
     const MAX_BH = 92, MAX_BW = 184;
@@ -1513,31 +1537,27 @@ async function renderCard() {
   }
 
   // Shrink-to-fit: measure text and reduce size until it fits
-  const maxNameW = CARD_W - PAD_X - hx - 8; // available width for name
+  const maxNameW = CARD_W - PAD_X - hx - 8;
   let nameSize = 52;
   ctx.font = `700 ${nameSize}px "Outfit",sans-serif`;
-  while (ctx.measureText(teamName).width > maxNameW && nameSize > 24) { nameSize -= 2; ctx.font = `700 ${nameSize}px "Outfit",sans-serif`; }
+  while (ctx.measureText(teamNameNoYear).width > maxNameW && nameSize > 24) { nameSize -= 2; ctx.font = `700 ${nameSize}px "Outfit",sans-serif`; }
   ctx.font = `700 ${nameSize}px "Outfit",sans-serif`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  // Simulate -webkit-text-stroke + text-shadow from reference
   ctx.save();
-  // Glow layer
   ctx.shadowColor = addAlpha(_s, 0.85);
   ctx.shadowBlur = 26;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(teamName, hx, hy + 2);
+  ctx.fillText(teamNameNoYear, hx, hy + 2);
   ctx.restore();
-  // Stroke to simulate -webkit-text-stroke:1px rgba(255,255,255,0.4)
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,0.4)';
   ctx.lineWidth = 0.5;
   ctx.lineJoin = 'round';
-  ctx.strokeText(teamName, hx, hy + 2);
+  ctx.strokeText(teamNameNoYear, hx, hy + 2);
   ctx.restore();
-  // Fill on top
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(teamName, hx, hy + 2);
+  ctx.fillText(teamNameNoYear, hx, hy + 2);
 
   ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = ac;
@@ -1579,7 +1599,7 @@ async function renderCard() {
   const oPill = [lighten(_p,0.06), lighten(_p,0.12)];
   const pillTxt = bestText(lighten(_p,0.18));
 
-  let ry = PAD_TOP + HEADER_H + BETWEEN;
+  let ry = PAD_TOP + YEAR_BAR_H + 8 + HEADER_H + BETWEEN;
   const rx = PAD_X;
   // Pre-calculate pill x positions for use outside the row loop (finals, bye)
   const xLP_outer = rx + COL_RND + COL_GAP + COL_DATE + COL_GAP;
