@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.121</span>
+    <span class="badge">Beta 0.122</span>
   </header>
 
   <!-- Left panel -->
@@ -1552,10 +1552,9 @@ async function renderCard() {
   // Resolve all card colours up front
   const ac = getResolvedColour('accent', _p, _s);
   const [,,_cardL] = hexToHsl(_card);
-  // Team name: fixed white, flips to black only if card is very light
-  const _teamNameCol = _cardL >= 0.70 ? '#111111' : '#ffffff';
-  // Other text (sub-text, pill text, finals): auto-contrast against card
+  // All text: auto-contrast against card colour
   const _autoText = bestText(_card);
+  const _teamNameCol = _autoText;
 
   // Draw year bar — centred, accent colour
   ctx.font = `600 22px "Outfit",sans-serif`;
