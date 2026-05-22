@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.115</span>
+    <span class="badge">Beta 0.118</span>
   </header>
 
   <!-- Left panel -->
@@ -476,24 +476,40 @@ html, body {
         Colours are auto-loaded from the fixture file. You can override them here.
         For a Gold team, swap primary and secondary.
       </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="field">
           <label>Primary colour</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="color-primary" value="#1a1a2e" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
-            <input type="text" id="color-primary-hex" value="#1a1a2e" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+          <div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+            <div style="position:relative;width:28px;height:28px;flex-shrink:0">
+              <div id="swatch-primary" style="width:28px;height:28px;border-radius:4px;background:#1a1a2e;position:absolute;inset:0;pointer-events:none;border:0.5px solid rgba(255,255,255,0.1)"></div>
+              <input type="color" id="color-primary" value="#1a1a2e" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0">
+            </div>
+            <input type="text" id="color-primary-hex" value="#1a1a2e" maxlength="7" style="flex:1;padding:0;border:none;background:none;color:var(--text);font-size:12px;font-family:monospace;outline:none">
           </div>
         </div>
         <div class="field">
           <label>Secondary colour</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="color-secondary" value="#ffffff" style="width:40px;height:36px;border:0.5px solid var(--border2);border-radius:4px;cursor:pointer;padding:2px">
-            <input type="text" id="color-secondary-hex" value="#ffffff" maxlength="7" style="flex:1;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+          <div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+            <div style="position:relative;width:28px;height:28px;flex-shrink:0">
+              <div id="swatch-secondary" style="width:28px;height:28px;border-radius:4px;background:#ffffff;position:absolute;inset:0;pointer-events:none;border:0.5px solid rgba(255,255,255,0.1)"></div>
+              <input type="color" id="color-secondary" value="#ffffff" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0">
+            </div>
+            <input type="text" id="color-secondary-hex" value="#ffffff" maxlength="7" style="flex:1;padding:0;border:none;background:none;color:var(--text);font-size:12px;font-family:monospace;outline:none">
           </div>
         </div>
       </div>
-      <button class="btn-sm" id="btn-swap-colours" style="margin-bottom:16px">⇄ Swap primary / secondary</button>
-      <div id="colour-preview" style="display:flex;gap:10px;flex-wrap:wrap;padding:12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);min-height:64px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn-sm" id="btn-swap-colours">⇄ Swap primary / secondary</button>
+      </div>
+
+      <div class="divider" style="margin-top:0;margin-bottom:8px"></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <p class="section-title">Card element colours</p>
+        <button class="btn-sm" id="btn-reset-colours" style="font-size:10px;padding:3px 8px">↺ Reset to defaults</button>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:6px">Auto-calculated from primary &amp; secondary. Override any individually.</p>
+
+      <div id="derived-colours" style="display:flex;flex-direction:column;gap:6px">
         <!-- populated by JS -->
       </div>
 
@@ -939,7 +955,55 @@ function getColours() {
   };
 }
 
-function setColours(primary, secondary) {
+// ── Derived colour state ────────────────────────────────────
+// Tracks overrides for each derived colour slot. null = auto-calculate.
+const derivedOverrides = {
+  cardDark:  null,
+  cardMid:   null,
+  card:      null,
+  ourPill:   null,
+  oppPill:   null,
+  pillText:  null,
+  dateBadge: null,
+  dateBadgeText: null,
+  accent:    null,
+  teamName:  null,
+  subText:   null,
+  finalsText: null,
+};
+
+// Derived colour definitions: id, label, how to auto-calculate, readonly flag
+function getDerivedDefs(primary, secondary) {
+  const _card = derivedOverrides['card'] || primary;
+  const _ourPill = derivedOverrides['ourPill'] || lighten(_card, 0.20);
+  const _dateBadge = derivedOverrides['dateBadge'] || secondary;
+  return [
+    { id: 'card',          label: 'Card',              auto: () => primary,                   readonly: false },
+    { id: 'cardMid',       label: 'Card mid',          auto: () => darken(_card, 0.30),       readonly: true },
+    { id: 'cardDark',      label: 'Card dark',         auto: () => darken(_card, 0.50),       readonly: true },
+    { id: 'ourPill',       label: 'Our team pill',     auto: () => lighten(_card, 0.20),      readonly: false },
+    { id: 'oppPill',       label: 'Opp pill',          auto: () => lighten(_card, 0.06),      readonly: false },
+    { id: 'pillText',      label: 'Pill text',         auto: () => bestText(_ourPill),        readonly: false },
+    { id: 'dateBadge',     label: 'Date badge',        auto: () => secondary,                 readonly: false },
+    { id: 'dateBadgeText', label: 'Date badge text',   auto: () => bestText(_dateBadge),      readonly: true },
+    { id: 'accent',        label: 'Accent / lines',    auto: () => secondary,                 readonly: false },
+    { id: 'teamName',      label: 'Team name',         auto: () => '#ffffff',                 readonly: false },
+    { id: 'subText',       label: 'Header sub-text',   auto: () => bestText(primary),         readonly: false },
+    { id: 'finalsText',    label: 'Finals text',        auto: () => '#ffffff',                 readonly: false },
+  ];
+}
+
+function getResolvedColour(id, primary, secondary) {
+  if (derivedOverrides[id]) return derivedOverrides[id];
+  const def = getDerivedDefs(primary, secondary).find(d => d.id === id);
+  return def ? def.auto() : '#ffffff';
+}
+
+function resetDerivedOverrides() {
+  Object.keys(derivedOverrides).forEach(k => derivedOverrides[k] = null);
+}
+
+function setColours(primary, secondary, resetDerived = true) {
   const pEl = document.getElementById('color-primary');
   const sEl = document.getElementById('color-secondary');
   const pHex = document.getElementById('color-primary-hex');
@@ -948,28 +1012,68 @@ function setColours(primary, secondary) {
   if (sEl) sEl.value = secondary;
   if (pHex) pHex.value = primary;
   if (sHex) sHex.value = secondary;
-  updateColourPreview();
+  if (resetDerived) resetDerivedOverrides();
+  syncSwatches();
+  buildDerivedColoursUI();
   if (state.generated) renderCard();
 }
 
-function updateColourPreview() {
+function buildDerivedColoursUI() {
   const { primary, secondary } = getColours();
-  const preview = document.getElementById('colour-preview');
-  if (!preview) return;
-  const swatches = [
-    { l: 'Card dark',    c: darken(primary, 0.5) },
-    { l: 'Card mid',     c: darken(primary, 0.3) },
-    { l: 'Card',         c: primary },
-    { l: 'Club pill',    c: lighten(primary, 0.18) },
-    { l: 'Opp pill',     c: lighten(primary, 0.08) },
-    { l: 'Secondary',    c: secondary },
-  ];
-  preview.innerHTML = swatches.map(s =>
-    `<div style="text-align:center">
-      <div style="width:40px;height:40px;border-radius:4px;background:${s.c};border:0.5px solid rgba(0,0,0,0.15);margin:0 auto 4px"></div>
-      <div style="font-size:10px;color:var(--text3)">${s.l}</div>
-    </div>`
-  ).join('');
+  const container = document.getElementById('derived-colours');
+  if (!container) return;
+  const defs = getDerivedDefs(primary, secondary);
+
+  // Shared swatch style — used for both readonly and editable rows
+  const swatchStyle = 'width:28px;height:28px;border-radius:4px;flex-shrink:0;border:0.5px solid rgba(255,255,255,0.1)';
+
+  container.innerHTML = defs.map(def => {
+    const resolved = derivedOverrides[def.id] || def.auto();
+    const isOverridden = !!derivedOverrides[def.id];
+    const borderCol = isOverridden ? 'rgba(124,77,255,0.5)' : 'var(--border)';
+    const labelCol  = def.readonly ? 'var(--text2)' : 'var(--text)';
+    const rowOpacity = def.readonly ? 'opacity:0.55;' : '';
+
+    const swatchOrPicker = def.readonly
+      ? `<div style="${swatchStyle};background:${resolved}"></div>`
+      : `<div style="position:relative;width:28px;height:28px;flex-shrink:0">
+           <div style="${swatchStyle};background:${resolved};position:absolute;inset:0;pointer-events:none;border-radius:4px"></div>
+           <input type="color" data-derived="${def.id}" value="${resolved}"
+             style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0">
+         </div>`;
+
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border:1px solid ${borderCol};border-radius:8px;${rowOpacity}">
+      ${swatchOrPicker}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:${labelCol}">${def.label}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:monospace">${resolved}${isOverridden ? ' <span style="color:#7c4dff">·</span>' : ''}</div>
+      </div>
+      ${def.readonly
+        ? '<span style="font-size:10px;color:var(--text3);letter-spacing:0.3px">auto</span>'
+        : isOverridden
+          ? `<button data-reset-derived="${def.id}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 4px;line-height:1" title="Reset to auto">↺</button>`
+          : ''}
+    </div>`;
+  }).join('');
+
+  // Wire colour pickers (editable rows only)
+  container.querySelectorAll('input[data-derived]').forEach(el => {
+    el.addEventListener('input', () => {
+      const id = el.dataset.derived;
+      derivedOverrides[id] = el.value;
+      buildDerivedColoursUI();
+      if (state.generated) renderCard();
+    });
+  });
+
+  // Wire reset buttons
+  container.querySelectorAll('button[data-reset-derived]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      derivedOverrides[btn.dataset.resetDerived] = null;
+      buildDerivedColoursUI();
+      if (state.generated) renderCard();
+    });
+  });
 }
 
 function buildSchemePicker() {
@@ -980,7 +1084,6 @@ function buildSchemePicker() {
     || state.colours['_default']
     || { primary: '#1a1a2e', secondary: '#ffffff' };
   setColours(clubColours.primary, clubColours.secondary);
-  updateColourPreview();
 }
 
 
@@ -1370,12 +1473,14 @@ async function renderCard() {
   ctx.scale(SCALE, SCALE);
 
   // ── Card background gradient ──
-  const cg = [_p, lighten(_p,0.08), darken(_p,0.08), darken(_p,0.18)];
+  const _cardDark = getResolvedColour('cardDark', _p, _s);
+  const _cardMid  = getResolvedColour('cardMid',  _p, _s);
+  const _card     = getResolvedColour('card',     _p, _s);
   const grad = ctx.createLinearGradient(CARD_W*0.3, 0, CARD_W*0.7, CARD_H);
-  grad.addColorStop(0,   cg[0]);
-  grad.addColorStop(0.3, cg[1]||cg[0]);
-  grad.addColorStop(0.65,cg[2]||cg[1]||cg[0]);
-  grad.addColorStop(1,   cg[3]||cg[cg.length-1]);
+  grad.addColorStop(0,    _card);
+  grad.addColorStop(0.3,  lighten(_card, 0.08));
+  grad.addColorStop(0.65, _cardMid);
+  grad.addColorStop(1,    _cardDark);
   roundRect(ctx, 0, 0, CARD_W, CARD_H, 20);
   ctx.fillStyle = grad;
   ctx.fill();
@@ -1489,11 +1594,11 @@ async function renderCard() {
   ctx.font = `600 22px "Outfit",sans-serif`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'center';
-  ctx.fillStyle = _s;
+  ctx.fillStyle = ac;
   ctx.fillText(yearBarText, CARD_W / 2, PAD_TOP);
 
   // ── Header ──
-  const ac = _s;
+  const ac = getResolvedColour('accent', _p, _s);
   let hx = PAD_X, hy = PAD_TOP + YEAR_BAR_H + 4;  // shifted down below year bar
 
   if (state.badgeImg) {
@@ -1544,25 +1649,27 @@ async function renderCard() {
   ctx.save();
   ctx.shadowColor = addAlpha(_s, 0.85);
   ctx.shadowBlur = 26;
-  ctx.fillStyle = '#ffffff';
+  const _teamNameCol = getResolvedColour('teamName', _p, _s);
+  ctx.fillStyle = _teamNameCol;
   ctx.fillText(teamNameNoYear, hx, hy + 2);
   ctx.restore();
   ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.strokeStyle = addAlpha(_teamNameCol, 0.4);
   ctx.lineWidth = 0.5;
   ctx.lineJoin = 'round';
   ctx.strokeText(teamNameNoYear, hx, hy + 2);
   ctx.restore();
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = _teamNameCol;
   ctx.fillText(teamNameNoYear, hx, hy + 2);
 
   ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
-  // Use bestText against primary for sublabel/venue so they're legible on light cards
-  const headerSubTxt = addAlpha(bestText(_p), 0.7);
-  const headerVenueTxt = addAlpha(bestText(_p), 0.55);
+  // Sub-text colour — user-overridable, defaults to bestText(primary)
+  const _subTextBase = getResolvedColour('subText', _p, _s);
+  const headerSubTxt = addAlpha(_subTextBase, 0.75);
+  const headerVenueTxt = addAlpha(_subTextBase, 0.55);
 
   if (sublabel) {
     ctx.font = `400 12px "Outfit",sans-serif`;
@@ -1588,13 +1695,18 @@ async function renderCard() {
   const usable   = CARD_W - PAD_X*2;
   const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS - COL_GAP*4) / 2;
 
-  const dbBg  = _s;
-  const dbTxt = bestText(_s);
-  const rlCol = _s;
+  const _dateBadge     = getResolvedColour('dateBadge',     _p, _s);
+  const _dateBadgeTxt  = getResolvedColour('dateBadgeText', _p, _s);
+  const _ourPill       = getResolvedColour('ourPill',       _p, _s);
+  const _oppPill       = getResolvedColour('oppPill',       _p, _s);
+  const _pillTxt       = getResolvedColour('pillText',      _p, _s);
+  const dbBg  = _dateBadge;
+  const dbTxt = _dateBadgeTxt;
+  const rlCol = ac;
   const vsCol = bestText('#ffffff');
-  const nPill = [lighten(_p,0.20), lighten(_p,0.25)];
-  const oPill = [lighten(_p,0.06), lighten(_p,0.12)];
-  const pillTxt = bestText(lighten(_p,0.18));
+  const nPill = [_ourPill, lighten(_ourPill, 0.05)];
+  const oPill = [_oppPill, lighten(_oppPill, 0.06)];
+  const pillTxt = _pillTxt;
 
   let ry = PAD_TOP + YEAR_BAR_H + 4 + HEADER_H + BETWEEN;
   const rx = PAD_X;
@@ -1807,7 +1919,8 @@ async function renderCard() {
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       ctx.fillStyle = ac;
       ctx.fillText(dateStr + sep, sx, y);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      const _finalsCol = getResolvedColour('finalsText', _p, _s);
+      ctx.fillStyle = addAlpha(_finalsCol, 0.9);
       ctx.fillText(label, sx + dw, y);
     };
 
@@ -2072,6 +2185,12 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 
 // Re-render on live changes
 // Colour picker wiring
+function syncSwatches() {
+  const p = document.getElementById('color-primary')?.value;
+  const s = document.getElementById('color-secondary')?.value;
+  if (p) { const sw = document.getElementById('swatch-primary'); if (sw) sw.style.background = p; }
+  if (s) { const sw = document.getElementById('swatch-secondary'); if (sw) sw.style.background = s; }
+}
 ['color-primary', 'color-secondary'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
@@ -2079,7 +2198,8 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     const hexId = id + '-hex';
     const hexEl = document.getElementById(hexId);
     if (hexEl) hexEl.value = el.value;
-    updateColourPreview();
+    syncSwatches();
+    buildDerivedColoursUI();
     if (state.generated) renderCard();
   });
 });
@@ -2091,14 +2211,20 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     const pickerId = id.replace('-hex', '');
     const picker = document.getElementById(pickerId);
     if (picker) picker.value = el.value;
-    updateColourPreview();
+    syncSwatches();
+    buildDerivedColoursUI();
     if (state.generated) renderCard();
   });
 });
 document.getElementById('btn-swap-colours')?.addEventListener('click', () => {
   const p = document.getElementById('color-primary').value;
   const s = document.getElementById('color-secondary').value;
-  setColours(s, p);
+  setColours(s, p, true); // reset derived on swap
+});
+document.getElementById('btn-reset-colours')?.addEventListener('click', () => {
+  resetDerivedOverrides();
+  buildDerivedColoursUI();
+  if (state.generated) renderCard();
 });
 
 ['team-name','club-name','team-sublabel','home-venue','finals-w1','finals-w2','finals-w3','finals-gf'].forEach(id => {
@@ -2196,6 +2322,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
   // Always reset club/competition assets on new upload so previous club doesn't persist
   state.ourCrest = null;
   state.badgeImg = null;
+  resetDerivedOverrides();
 
   // Auto-detect team info from page title — always reset on new upload
   const teamInfo = detectTeamInfo(text);
