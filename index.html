@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.124</span>
+    <span class="badge">Beta 0.125</span>
   </header>
 
   <!-- Left panel -->
@@ -1565,12 +1565,17 @@ async function renderCard() {
   ctx.fillText(yearBarText, CARD_W / 2, PAD_TOP);
 
   // ── Header ──
-  let hx = PAD_X, hy = PAD_TOP + YEAR_BAR_H + 4;  // shifted down below year bar
+  // Badge sits on the RIGHT; text is always left-anchored at PAD_X.
+  // This ensures wide logos never push the team name across.
+  const hy = PAD_TOP + YEAR_BAR_H + 4;
+  const MAX_BH = 92, MAX_BW = 184;
+
+  // Calculate badge dimensions first so we know the text width budget
+  let badgeDrawX = 0, badgeDrawY = 0, badgeDrawW = 0, badgeDrawH = 0;
+  let badgeSrcX = 0, badgeSrcY = 0, badgeSrcW = 0, badgeSrcH = 0;
 
   if (state.badgeImg) {
-    const MAX_BH = 92, MAX_BW = 184;
-    // Crop badge to its content bounds using an offscreen canvas,
-    // so the shield fills the target size rather than leaving black padding
+    // Crop to content bounds (strip black padding)
     const bcv = document.createElement('canvas');
     bcv.width = state.badgeImg.naturalWidth;
     bcv.height = state.badgeImg.naturalHeight;
@@ -1587,25 +1592,21 @@ async function renderCard() {
         }
       }
     }
-    // Draw just the content region scaled to fit MAX_BW x MAX_BH
-    // Left-anchored (no horizontal centering), vertically centred within MAX_BH
     const contentW = bx1-bx0+1, contentH = by1-by0+1;
     const bscale = Math.min(MAX_BW/contentW, MAX_BH/contentH);
-    const bw = Math.round(contentW * bscale);
-    const bh = Math.round(contentH * bscale);
-    const bOffY = Math.round((MAX_BH - bh) / 2);
-    ctx.save();
-    ctx.shadowColor = addAlpha(_s, 0.85);
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 4;
-    ctx.drawImage(state.badgeImg, bx0, by0, contentW, contentH, hx, hy + bOffY, bw, bh);
-    ctx.restore();
-    hx += bw + 14;
+    badgeDrawW = Math.round(contentW * bscale);
+    badgeDrawH = Math.round(contentH * bscale);
+    const bOffY = Math.round((MAX_BH - badgeDrawH) / 2);
+    // Right-align: badge right edge sits at CARD_W - PAD_X
+    badgeDrawX = CARD_W - PAD_X - badgeDrawW;
+    badgeDrawY = hy + bOffY;
+    badgeSrcX = bx0; badgeSrcY = by0; badgeSrcW = contentW; badgeSrcH = contentH;
   }
 
-  // Shrink-to-fit: measure text and reduce size until it fits
-  const maxNameW = CARD_W - PAD_X - hx - 8;
+  // Text always starts at PAD_X; right boundary is left edge of badge (with gap)
+  const textRightBound = state.badgeImg ? badgeDrawX - 12 : CARD_W - PAD_X;
+  const maxNameW = textRightBound - PAD_X - 8;
+
   let nameSize = 52;
   ctx.font = `700 ${nameSize}px "Outfit",sans-serif`;
   while (ctx.measureText(teamNameNoYear).width > maxNameW && nameSize > 24) { nameSize -= 2; ctx.font = `700 ${nameSize}px "Outfit",sans-serif`; }
@@ -1616,20 +1617,20 @@ async function renderCard() {
   ctx.shadowColor = addAlpha(_s, 0.85);
   ctx.shadowBlur = 26;
   ctx.fillStyle = _teamNameCol;
-  ctx.fillText(teamNameNoYear, hx, hy + 2);
+  ctx.fillText(teamNameNoYear, PAD_X, hy + 2);
   ctx.restore();
   ctx.save();
   ctx.strokeStyle = addAlpha(_teamNameCol, 0.4);
   ctx.lineWidth = 0.5;
   ctx.lineJoin = 'round';
-  ctx.strokeText(teamNameNoYear, hx, hy + 2);
+  ctx.strokeText(teamNameNoYear, PAD_X, hy + 2);
   ctx.restore();
   ctx.fillStyle = _teamNameCol;
-  ctx.fillText(teamNameNoYear, hx, hy + 2);
+  ctx.fillText(teamNameNoYear, PAD_X, hy + 2);
 
   ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = ac;
-  ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
+  ctx.fillText(clubName.toUpperCase(), PAD_X, hy + nameSize + 6);
 
   const headerSubTxt   = addAlpha(_autoText, 0.75);
   const headerVenueTxt = addAlpha(_autoText, 0.55);
@@ -1637,13 +1638,24 @@ async function renderCard() {
   if (sublabel) {
     ctx.font = `400 12px "Outfit",sans-serif`;
     ctx.fillStyle = headerSubTxt;
-    ctx.fillText(sublabel.toUpperCase(), hx, hy + nameSize + 22);
+    ctx.fillText(sublabel.toUpperCase(), PAD_X, hy + nameSize + 22);
   }
   if (homeVenue) {
     ctx.font = `400 11px "Outfit",sans-serif`;
     ctx.fillStyle = headerVenueTxt;
     const venuePrefix = homeVenue.includes(' / ') ? 'HOME VENUES: ' : 'HOME VENUE: ';
-    ctx.fillText(venuePrefix + homeVenue, hx, hy + nameSize + 36);
+    ctx.fillText(venuePrefix + homeVenue, PAD_X, hy + nameSize + 36);
+  }
+
+  // Draw badge on the right (after text, so it sits on top if they overlap)
+  if (state.badgeImg) {
+    ctx.save();
+    ctx.shadowColor = addAlpha(_s, 0.85);
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 4;
+    ctx.drawImage(state.badgeImg, badgeSrcX, badgeSrcY, badgeSrcW, badgeSrcH, badgeDrawX, badgeDrawY, badgeDrawW, badgeDrawH);
+    ctx.restore();
   }
 
   // ── Grid layout constants ──
