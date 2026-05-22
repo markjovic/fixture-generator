@@ -1,4 +1,4 @@
-# Fixture Card Generator — Beta 0.108
+# Fixture Card Generator — Beta 0.114
 
 A single-file HTML canvas app that generates printable AFL junior fixture cards from PlayHQ fixture pages. Built for Norwood Junior Football Club but designed to work for any EFNL (or other competition) club.
 
@@ -115,12 +115,19 @@ For the EFNL badge watermark specifically, the green background oval was removed
 ## Card layout
 
 - **Width**: `Math.max(560, Math.round(CARD_H * 0.707))` — A4 portrait proportions, min 560px
-- **Height**: `PAD_TOP(24) + HEADER_H(96) + BETWEEN(12) + contentH + FINALS_H(68) + PAD_BOT(26)`
+- **Height**: `PAD_TOP(24) + YEAR_BAR_H(28) + 4 + HEADER_H(96) + BETWEEN(12) + contentH + FINALS_H(68) + PAD_BOT(26)`
   - Each fixture row: `ROW_H(50) + ROW_GAP(4) = 54px`
   - Each bye row: `BYE_H(28) + ROW_GAP(4) = 32px`
 - **Scale**: rendered at 2× (retina), displayed at 1×
 - **Grid columns**: `COL_RND(24) + COL_DATE(52) + COL_VS(scales) + COL_GAP(scales) + 2×COL_PILL`
   - `COL_VS` and `COL_GAP` scale with `CARD_W / 560` so VS circle has breathing room on wider cards
+
+### Year bar
+- Sits at the very top of the card, centred
+- Shows `"[YEAR] FIXTURES"` e.g. `"2026 FIXTURES"` in the secondary colour
+- Year is extracted from the team name field at render time (`/\b(20\d{2})\b/`)
+- Falls back to just `"FIXTURES"` if no year is found
+- Team name on the card has the year stripped out
 
 ### Watermark progressive hiding
 - `CARD_H ≥ 680px`: all 4 watermarks shown
@@ -133,10 +140,15 @@ For the EFNL badge watermark specifically, the green background oval was removed
 - **Tackle**: x=`-20`, y=`135` (from top)
 - **Running**: x=`-55`, bottom edge at `CARD_H - 135`
 - **Kicking**: x=`CARD_W - wm_w + 30`, bottom at `CARD_H * 0.04` from bottom
-- **EFNL TR**: `CARD_W - efnl_w/2 + 30`, rotated 10°, `source-over` at 4–5% opacity
+- **Competition TR**: `CARD_W - efnl_w/2 + 30`, rotated 10°, `source-over` at 4–5% opacity
 
 ### Watermark sizes (% of CARD_W)
 - Huddle: 39%, Tackle: 39%×0.95, Running: 36%×0.95, Kicking: 35%
+
+### Watermark opacity
+- `source-over` blend on all cards
+- Scales from 30% (dark cards, L=0) to 20% (light cards, L=1.0)
+- Formula: `Math.max(0.20, Math.min(0.30, 0.30 - (pL * 0.20)))`
 
 ---
 
@@ -153,6 +165,7 @@ Colours loaded from `assets/colours.json` keyed by club name (e.g. `"Norwood"`, 
 - Our team pill: `lighten(primary, 0.20–0.25)`
 - Opposition pill: `lighten(primary, 0.06–0.12)`
 - Date badge: secondary colour
+- Year bar text: secondary colour
 - Bye/finals lines: secondary colour
 - Pill text: `bestText(lighten(primary, 0.18))` — contrast-aware black or white
 
@@ -175,14 +188,16 @@ Colours loaded from `assets/colours.json` keyed by club name (e.g. `"Norwood"`, 
 
 ## Known quirks & decisions
 
-- **Joint teams** (e.g. `Norwood Gold/Heathmont`): primary club = first part before `/`, colour stripped. Display name: `U12 Gold / Heathmont 2026`. Club name: `Norwood`. Assets load for primary club only.
+- **Joint teams** (e.g. `Norwood Gold/Heathmont`): primary club = first part before `/`, colour stripped. Display name: `U12 Gold / Heathmont 2026`. Club name: `Norwood`. Assets load for primary club only. When joint team appears as an *opponent*, `getCrest` strips the secondary team and colour to find the primary club's crest.
+- **Slash normalisation**: `shortName()` and `getCrest()` both normalise `/` to ` / ` before processing, so `"Gold/Heathmont"` and `"Gold / Heathmont"` are handled identically.
 - **Badge rendering**: pixel-scans offscreen canvas to find content bounding box, strips black padding. `MAX_BW=184, MAX_BH=92`. Vertically centred within `MAX_BH`, left-anchored. Wide logos (Heathmont, Glen Waverley) scale up to 184px wide.
-- **Home venue**: stored as plain name in field; `HOME VENUE:` / `HOME VENUES:` added on card. Venue suppressed from per-row pills when it matches the dominant home venue (≥80% of home games). Multiple venues separated by `/`.
+- **Home venue**: stored as plain venue name in the field; `HOME VENUE:` / `HOME VENUES:` prefix added on the card. Venue suppressed from per-row pills when it matches the dominant home venue (≥80% of home games). Multiple venues separated by `/`.
 - **Opposition pill fallback**: no crest PNG → first letter of club name on secondary-colour background with `bestText(secondary)` letter colour.
 - **Score display**: completed games show `homeScore-awayScore` in VS circle. Win/loss/draw ring: green/red/orange.
 - **Beaconsfield**: PlayHQ name includes `"Football Club"` — `shortName()` strips common suffixes including standalone `"Football"`.
 - **wm_efnl.png**: palette PNG transparency lost in project folder. Use `.TXT` rename trick for upload. See watermark processing notes above.
-- **Loading a new fixture file**: always resets card, clears previous club assets (`state.norwood_crest = null`, `state.badgeImg = null`) before loading new ones.
+- **Loading a new fixture file**: always resets card, clears previous club assets (`state.ourCrest = null`, `state.badgeImg = null`) before loading new ones.
+- **No Norwood/EFNL hardcoding**: all variable names, fallbacks and defaults are generic. The `"Norwood"` entry in `DEFAULT_COLOURS` is data, not a default.
 
 ---
 
@@ -190,6 +205,12 @@ Colours loaded from `assets/colours.json` keyed by club name (e.g. `"Norwood"`, 
 
 | Version | Key changes |
 |---------|-------------|
+| 0.114 | Year bar gap reduced; separator line removed |
+| 0.113 | Year bar separator line removed |
+| 0.112 | Year bar ("2026 FIXTURES") added above header; year stripped from team name |
+| 0.111 | getCrest normalises slash before joint team split |
+| 0.110 | getCrest used for opponent pill lookup; slash spacing normalised in shortName |
+| 0.109 | state.norwood_crest → state.ourCrest; all Norwood/purple hardcoding removed |
 | 0.108 | Joint team detection (Norwood Gold/Heathmont); shortName strips Football suffix |
 | 0.107 | Home venue field stores plain name; prefix added on card |
 | 0.106 | Badge vertical centering within MAX_BH space |
