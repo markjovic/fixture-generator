@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.114</span>
+    <span class="badge">Beta 0.115</span>
   </header>
 
   <!-- Left panel -->
@@ -2211,14 +2211,14 @@ document.getElementById('file-input').addEventListener('change', async e => {
       sublabelField.value = expandLeagueName(teamInfo.league);
       sublabelField.dataset.userEdited = '';
     }
-    if (clubField) {
-      clubField.value = teamInfo.clubName;
-      clubField.dataset.userEdited = '';
-    }
-    // Normalise club name — strip "Football Club", "FC" etc for colours/asset lookup
+    // Normalise club name — strip "Football Club", "FC", "Juniors" etc for display and lookup
     const detectedClub = teamInfo.clubName
       .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC|Juniors|Junior)\s*$/i, '')
       .trim();
+    if (clubField) {
+      clubField.value = detectedClub;
+      clubField.dataset.userEdited = '';
+    }
     const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
     const clubC = state.colours[detectedClub] || state.colours['_default'];
     const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#1a1a2e';
