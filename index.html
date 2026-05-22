@@ -1001,7 +1001,7 @@ function fmtTime(s) {
 function shortName(playhqName) {
   return playhqName
     .replace(/\s+U\d+.*$/i, '')           // strip age group and everything after
-    .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|Junior\s+Football|Football|FC|JFC|Sports\s+Club|SC)\s*$/i, '') // strip club suffixes
+    .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|Junior\s+Football|Football|FC|JFC|Sports\s+Club|SC|Juniors|Junior)\s*$/i, '') // strip club suffixes
     .replace(/\s*\/\s*/g, ' / ')          // normalise slash spacing
     .trim().toUpperCase();
 }
@@ -1240,6 +1240,10 @@ const CREST_ALIASES = {
   'MT EVELYN':              'MT EVELYN',
   'MOUNT EVELYN':           'MT EVELYN',
   'GLEN WAVERLEY ROVERS':   'GLEN WAVERLEY ROVERS',
+  'FLEMINGTON JUNIORS':     'FLEMINGTON',
+  'FLEMINGTON':             'FLEMINGTON',
+  'HCFC':                   'HOPPERS CROSSING',
+  'WILLIAMSTOWN JUNIORS':   'WILLIAMSTOWN',
 };
 
 async function getCrest(playhqName) {
@@ -1248,6 +1252,8 @@ async function getCrest(playhqName) {
   cleaned = cleaned.replace(/\s*\/\s*/g, ' / ');  // "GOLD/HEATHMONT" → "GOLD / HEATHMONT"
   // Joint team: "NORWOOD GOLD / HEATHMONT" → use first part "NORWOOD GOLD"
   if (cleaned.includes(' / ')) cleaned = cleaned.split(' / ')[0].trim();
+  // Strip "Juniors" / "Junior" suffix (e.g. "FLEMINGTON JUNIORS" → "FLEMINGTON")
+  cleaned = cleaned.replace(/\s+JUNIORS?\s*$/i, '').trim();
   // Strip colour words to get to the club name: "NORWOOD GOLD" → "NORWOOD"
   const COLOUR_WORDS = ['PURPLE','GOLD','BLUE','RED','GREEN','WHITE','BLACK','SILVER','NAVY','YELLOW','ORANGE','TEAL'];
   COLOUR_WORDS.forEach(c => { cleaned = cleaned.replace(new RegExp('\\s+' + c + '\\s*$'), '').trim(); });
@@ -2211,7 +2217,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
     }
     // Normalise club name — strip "Football Club", "FC" etc for colours/asset lookup
     const detectedClub = teamInfo.clubName
-      .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC)\s*$/i, '')
+      .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC|Juniors|Junior)\s*$/i, '')
       .trim();
     const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
     const clubC = state.colours[detectedClub] || state.colours['_default'];
