@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.119</span>
+    <span class="badge">Beta 0.121</span>
   </header>
 
   <!-- Left panel -->
@@ -498,9 +498,7 @@ html, body {
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn-sm" id="btn-swap-colours">⇄ Swap primary / secondary</button>
-      </div>
+      <button class="btn-generate" id="btn-swap-colours" style="margin-bottom:12px">⇄ Swap primary / secondary</button>
 
       <div class="divider" style="margin-top:0;margin-bottom:8px"></div>
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
@@ -961,10 +959,9 @@ const derivedOverrides = {
   ourPill: null,
   oppPill: null,
   accent:  null,
-  text:    null,
 };
 
-// Derived colour definitions — only the 5 user-visible editable slots
+// Derived colour definitions — 4 user-visible editable slots
 function getDerivedDefs(primary, secondary) {
   const _card = derivedOverrides['card'] || primary;
   return [
@@ -972,7 +969,6 @@ function getDerivedDefs(primary, secondary) {
     { id: 'ourPill', label: 'Our team pill', auto: () => lighten(_card, 0.20) },
     { id: 'oppPill', label: 'Opp pill',      auto: () => lighten(_card, 0.06) },
     { id: 'accent',  label: 'Accent',        auto: () => secondary },
-    { id: 'text',    label: 'Text',          auto: () => '#ffffff' },
   ];
 }
 
@@ -1553,7 +1549,15 @@ async function renderCard() {
   const teamNameNoYear = teamName.replace(/\s*\b20\d{2}\b\s*/g, '').trim();
   const yearBarText = cardYear ? cardYear + ' FIXTURES' : 'FIXTURES';
 
-  // Draw year bar — centred, secondary colour, sized between team name and club name
+  // Resolve all card colours up front
+  const ac = getResolvedColour('accent', _p, _s);
+  const [,,_cardL] = hexToHsl(_card);
+  // Team name: fixed white, flips to black only if card is very light
+  const _teamNameCol = _cardL >= 0.70 ? '#111111' : '#ffffff';
+  // Other text (sub-text, pill text, finals): auto-contrast against card
+  const _autoText = bestText(_card);
+
+  // Draw year bar — centred, accent colour
   ctx.font = `600 22px "Outfit",sans-serif`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'center';
@@ -1561,8 +1565,6 @@ async function renderCard() {
   ctx.fillText(yearBarText, CARD_W / 2, PAD_TOP);
 
   // ── Header ──
-  const ac      = getResolvedColour('accent', _p, _s);
-  const _text   = getResolvedColour('text',   _p, _s);
   let hx = PAD_X, hy = PAD_TOP + YEAR_BAR_H + 4;  // shifted down below year bar
 
   if (state.badgeImg) {
@@ -1613,24 +1615,24 @@ async function renderCard() {
   ctx.save();
   ctx.shadowColor = addAlpha(_s, 0.85);
   ctx.shadowBlur = 26;
-  ctx.fillStyle = _text;
+  ctx.fillStyle = _teamNameCol;
   ctx.fillText(teamNameNoYear, hx, hy + 2);
   ctx.restore();
   ctx.save();
-  ctx.strokeStyle = addAlpha(_text, 0.4);
+  ctx.strokeStyle = addAlpha(_teamNameCol, 0.4);
   ctx.lineWidth = 0.5;
   ctx.lineJoin = 'round';
   ctx.strokeText(teamNameNoYear, hx, hy + 2);
   ctx.restore();
-  ctx.fillStyle = _text;
+  ctx.fillStyle = _teamNameCol;
   ctx.fillText(teamNameNoYear, hx, hy + 2);
 
   ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = ac;
   ctx.fillText(clubName.toUpperCase(), hx, hy + nameSize + 6);
 
-  const headerSubTxt   = addAlpha(_text, 0.75);
-  const headerVenueTxt = addAlpha(_text, 0.55);
+  const headerSubTxt   = addAlpha(_autoText, 0.75);
+  const headerVenueTxt = addAlpha(_autoText, 0.55);
 
   if (sublabel) {
     ctx.font = `400 12px "Outfit",sans-serif`;
@@ -1664,7 +1666,7 @@ async function renderCard() {
   const vsCol  = bestText('#ffffff');
   const nPill  = [_ourPill, lighten(_ourPill, 0.05)];
   const oPill  = [_oppPill, lighten(_oppPill, 0.06)];
-  const pillTxt = _text;
+  const pillTxt = _autoText;
 
   let ry = PAD_TOP + YEAR_BAR_H + 4 + HEADER_H + BETWEEN;
   const rx = PAD_X;
@@ -1877,7 +1879,7 @@ async function renderCard() {
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       ctx.fillStyle = ac;
       ctx.fillText(dateStr + sep, sx, y);
-      ctx.fillStyle = addAlpha(_text, 0.9);
+      ctx.fillStyle = addAlpha(_autoText, 0.9);
       ctx.fillText(label, sx + dw, y);
     };
 
