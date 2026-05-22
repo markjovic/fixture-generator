@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.122</span>
+    <span class="badge">Beta 0.124</span>
   </header>
 
   <!-- Left panel -->
@@ -957,7 +957,6 @@ function getColours() {
 const derivedOverrides = {
   card:    null,
   ourPill: null,
-  oppPill: null,
   accent:  null,
 };
 
@@ -966,8 +965,10 @@ function getDerivedDefs(primary, secondary) {
   const _card = derivedOverrides['card'] || primary;
   return [
     { id: 'card',    label: 'Card',          auto: () => primary },
-    { id: 'ourPill', label: 'Our team pill', auto: () => lighten(_card, 0.20) },
-    { id: 'oppPill', label: 'Opp pill',      auto: () => lighten(_card, 0.06) },
+    { id: 'ourPill', label: 'Our team pill', auto: () => {
+        const [hh,ss,ll] = hexToHsl(_card);
+        return ll >= 0.60 ? darken(_card, 0.20) : lighten(_card, 0.20);
+      }},
     { id: 'accent',  label: 'Accent',        auto: () => secondary },
   ];
 }
@@ -1658,7 +1659,9 @@ async function renderCard() {
   const COL_PILL = (usable - COL_RND - COL_DATE - COL_VS - COL_GAP*4) / 2;
 
   const _ourPill = getResolvedColour('ourPill', _p, _s);
-  const _oppPill = getResolvedColour('oppPill', _p, _s);
+  // Opp pill always calculated from our pill — same direction, smaller step
+  const [,,_ourPillL] = hexToHsl(_ourPill);
+  const _oppPill = _ourPillL >= 0.60 ? darken(_ourPill, 0.14) : lighten(_ourPill, 0.14);
   const dbBg   = ac;
   const dbTxt  = bestText(ac);
   const rlCol  = ac;
