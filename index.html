@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.125</span>
+    <span class="badge">Beta 0.127</span>
   </header>
 
   <!-- Left panel -->
@@ -1463,7 +1463,9 @@ async function renderCard() {
     ctx.save();
     ctx.globalAlpha = isLight ? 0.05 : 0.04;
     ctx.globalCompositeOperation = 'source-over';
-    const cx = CARD_W - efnl_w/2 + 30;
+    // Horizontally centred on the badge position (badge is right-aligned to CARD_W - PAD_X)
+    // Badge centre x ≈ CARD_W - PAD_X - MAX_BW/2, watermark is larger so bleeds around it
+    const cx = CARD_W - PAD_X - MAX_BW / 2;
     const cy = efnl_h/2 + 10;
     ctx.translate(cx, cy);
     ctx.rotate(10 * Math.PI/180);
@@ -1913,7 +1915,7 @@ async function renderCard() {
         drawFItem(cx, wk.date, wk.label, fRow1Y);
         if (idx < finWeeks.length - 1) {
           ctx.font = `300 16px Arial`;
-          ctx.fillStyle = 'rgba(245,200,0,0.45)';
+          ctx.fillStyle = addAlpha(ac, 0.45);
           ctx.textAlign = 'center';
           ctx.fillText('|', fxStart + segW * (idx + 1), fRow1Y);
         }
