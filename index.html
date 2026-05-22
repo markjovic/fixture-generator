@@ -89,6 +89,31 @@ html, body {
   text-transform: uppercase;
   color: var(--text);
 }
+.btn-panel-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(124,77,255,0.35);
+  border-radius: 8px;
+  color: #b39dff;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 5px 12px;
+  margin-left: auto;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-panel-toggle:hover { background: rgba(124,77,255,0.22); border-color: rgba(124,77,255,0.55); }
+.btn-panel-toggle svg { flex-shrink: 0; transition: transform 0.25s ease; }
+@media (max-width: 700px) {
+  .btn-panel-toggle { display: flex; }
+}
 .app-header .badge {
   display: inline-flex;
   align-items: center;
@@ -378,6 +403,42 @@ html, body {
   height: auto;
 }
 
+/* ── Mobile panel overlay ─────────────────────────────────── */
+@media (max-width: 700px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas: "header" "preview";
+  }
+  .panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(400px, 100vw);
+    height: 100dvh;
+    z-index: 200;
+    transform: translateX(-110%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    border-right: 1px solid var(--border2);
+    box-shadow: 4px 0 32px rgba(0,0,0,0.55);
+  }
+  .panel.panel-open {
+    transform: translateX(0);
+  }
+  .panel-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 199;
+    backdrop-filter: blur(2px);
+  }
+  .panel-backdrop.active { display: block; }
+  .preview {
+    padding: 16px 12px 40px;
+  }
+}
+
 /* ── Scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -400,8 +461,19 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.132</span>
+    <span class="badge">Beta 0.133</span>
+    <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <line x1="2" y1="4" x2="14" y2="4"/>
+        <line x1="2" y1="8" x2="14" y2="8"/>
+        <line x1="2" y1="12" x2="14" y2="12"/>
+      </svg>
+      Settings
+    </button>
   </header>
+
+  <!-- Mobile backdrop -->
+  <div class="panel-backdrop" id="panel-backdrop"></div>
 
   <!-- Left panel -->
   <aside class="panel">
@@ -2388,6 +2460,47 @@ document.getElementById('file-input').addEventListener('change', async e => {
   await processHTMLText(text, fb);
 });
 
+// ── Mobile panel toggle ──────────────────────────────────────
+(function initPanelToggle() {
+  const toggleBtn  = document.getElementById('btn-panel-toggle');
+  const panel      = document.querySelector('.panel');
+  const backdrop   = document.getElementById('panel-backdrop');
+  if (!toggleBtn || !panel || !backdrop) return;
+
+  function openPanel() {
+    panel.classList.add('panel-open');
+    backdrop.classList.add('active');
+    toggleBtn.setAttribute('aria-expanded', 'true');
+    // Swap icon to X
+    toggleBtn.querySelector('svg').innerHTML = `
+      <line x1="3" y1="3" x2="13" y2="13"/>
+      <line x1="13" y1="3" x2="3" y2="13"/>`;
+    toggleBtn.childNodes[toggleBtn.childNodes.length - 1].textContent = ' Close';
+  }
+
+  function closePanel() {
+    panel.classList.remove('panel-open');
+    backdrop.classList.remove('active');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    // Restore hamburger icon
+    toggleBtn.querySelector('svg').innerHTML = `
+      <line x1="2" y1="4" x2="14" y2="4"/>
+      <line x1="2" y1="8" x2="14" y2="8"/>
+      <line x1="2" y1="12" x2="14" y2="12"/>`;
+    toggleBtn.childNodes[toggleBtn.childNodes.length - 1].textContent = ' Settings';
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.contains('panel-open') ? closePanel() : openPanel();
+  });
+
+  backdrop.addEventListener('click', closePanel);
+
+  // Close panel when Generate Card is pressed (so user sees the preview)
+  document.getElementById('btn-generate').addEventListener('click', () => {
+    if (window.innerWidth <= 700) closePanel();
+  });
+})();
 
 </script>
 </body>
