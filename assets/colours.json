@@ -1,7 +1,23 @@
 {
   "_default": {
-    "primary": "#22085f",
-    "secondary": "#f5c800"
+    "primary": "#1a1a2e",
+    "secondary": "#ffffff"
+  },
+  "Aintree": {
+    "primary": "#e87625",
+    "secondary": "#1a2d6b"
+  },
+  "Albanvale": {
+    "primary": "#065397",
+    "secondary": "#ffffff"
+  },
+  "Albion": {
+    "primary": "#0d0c46",
+    "secondary": "#ffffff"
+  },
+  "Altona": {
+    "primary": "#4a1a6e",
+    "secondary": "#e6ac0f"
   },
   "Bayswater": {
     "primary": "#10A050",
@@ -22,6 +38,14 @@
   "Boronia": {
     "primary": "#503010",
     "secondary": "#F0D000"
+  },
+  "Braybrook": {
+    "primary": "#e91c31",
+    "secondary": "#000000"
+  },
+  "Caroline Springs Lakers": {
+    "primary": "#016cb6",
+    "secondary": "#d99c2a"
   },
   "Chirnside Park": {
     "primary": "#F0C000",
@@ -63,9 +87,17 @@
     "primary": "#0000C0",
     "secondary": "#F0F0F0"
   },
+  "Flemington": {
+    "primary": "#0a1782",
+    "secondary": "#fdc425"
+  },
   "Forest Hill": {
     "primary": "#205030",
     "secondary": "#F0F0F0"
+  },
+  "Glen Orden Hawks": {
+    "primary": "#1a1200",
+    "secondary": "#f0b639"
   },
   "Glen Waverley Rovers": {
     "primary": "#000000",
@@ -75,6 +107,10 @@
     "primary": "#104080",
     "secondary": "#F0D000"
   },
+  "Hoppers Crossing": {
+    "primary": "#090441",
+    "secondary": "#f5c400"
+  },
   "Kilsyth": {
     "primary": "#C01010",
     "secondary": "#000000"
@@ -83,6 +119,10 @@
     "primary": "#C01010",
     "secondary": "#000000"
   },
+  "Laverton Magpies": {
+    "primary": "#000000",
+    "secondary": "#ffffff"
+  },
   "Lilydale": {
     "primary": "#104080",
     "secondary": "#F0D000"
@@ -90,6 +130,10 @@
   "Lysterfield": {
     "primary": "#20B0D0",
     "secondary": "#D0D0D0"
+  },
+  "Manor Lakes Storm": {
+    "primary": "#d15930",
+    "secondary": "#000000"
   },
   "Mitcham": {
     "primary": "#F0D000",
@@ -107,12 +151,28 @@
     "primary": "#701030",
     "secondary": "#F0F0F0"
   },
+  "Newport": {
+    "primary": "#670b2f",
+    "secondary": "#f7b81e"
+  },
+  "Newport Power": {
+    "primary": "#109797",
+    "secondary": "#000000"
+  },
   "Noble Park": {
     "primary": "#1050A0",
     "secondary": "#F0D000"
   },
+  "North Footscray": {
+    "primary": "#e42433",
+    "secondary": "#ffffff"
+  },
   "North Ringwood": {
     "primary": "#C01010",
+    "secondary": "#000000"
+  },
+  "North Sunshine": {
+    "primary": "#ee0607",
     "secondary": "#000000"
   },
   "Norwood": {
@@ -122,6 +182,22 @@
   "Oakleigh District": {
     "primary": "#000000",
     "secondary": "#F0F0F0"
+  },
+  "Parkside": {
+    "primary": "#000000",
+    "secondary": "#ffffff"
+  },
+  "Parkside Spurs": {
+    "primary": "#3f698e",
+    "secondary": "#ffffff"
+  },
+  "Pegs": {
+    "primary": "#913741",
+    "secondary": "#202444"
+  },
+  "Point Cook": {
+    "primary": "#035496",
+    "secondary": "#cc1122"
   },
   "Ringwood": {
     "primary": "#000000",
@@ -135,6 +211,10 @@
     "primary": "#F0F0F0",
     "secondary": "#0090B0"
   },
+  "Sanctuary Lakes": {
+    "primary": "#1890c3",
+    "secondary": "#ffffff"
+  },
   "South Belgrave": {
     "primary": "#C01010",
     "secondary": "#000000"
@@ -143,6 +223,30 @@
     "primary": "#104080",
     "secondary": "#C01010"
   },
+  "Spotswood": {
+    "primary": "#00a64e",
+    "secondary": "#fdc42e"
+  },
+  "St Bernards": {
+    "primary": "#1b4482",
+    "secondary": "#f0a128"
+  },
+  "Suns": {
+    "primary": "#e6452a",
+    "secondary": "#1a0800"
+  },
+  "Sunshine Heights": {
+    "primary": "#09549b",
+    "secondary": "#f00507"
+  },
+  "Sunshine Kangaroos": {
+    "primary": "#0a2040",
+    "secondary": "#eea24b"
+  },
+  "Tarneit": {
+    "primary": "#580223",
+    "secondary": "#031945"
+  },
   "Templestowe": {
     "primary": "#200050",
     "secondary": "#F0E0F0"
@@ -150,6 +254,10 @@
   "The Basin": {
     "primary": "#104020",
     "secondary": "#C01010"
+  },
+  "Truganina Thunder": {
+    "primary": "#274564",
+    "secondary": "#5cb950"
   },
   "Upper Ferntree Gully": {
     "primary": "#104080",
@@ -170,5 +278,33 @@
   "Waverley Blues": {
     "primary": "#102030",
     "secondary": "#C01010"
+  },
+  "Werribee Centrals": {
+    "primary": "#1a3a0a",
+    "secondary": "#d9ca37"
+  },
+  "Werribee Districts": {
+    "primary": "#1a1200",
+    "secondary": "#efa70a"
+  },
+  "West Footscray": {
+    "primary": "#ea1c24",
+    "secondary": "#000000"
+  },
+  "Western Rams": {
+    "primary": "#9d2d28",
+    "secondary": "#ffffff"
+  },
+  "Williamstown": {
+    "primary": "#0101f8",
+    "secondary": "#edb734"
+  },
+  "Wyndhamvale": {
+    "primary": "#2a5a0a",
+    "secondary": "#f1c216"
+  },
+  "Yarraville Seddon Eagles": {
+    "primary": "#030164",
+    "secondary": "#fccb06"
   }
 }
