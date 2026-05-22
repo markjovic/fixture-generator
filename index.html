@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.129</span>
+    <span class="badge">Beta 0.130</span>
   </header>
 
   <!-- Left panel -->
@@ -1603,9 +1603,10 @@ async function renderCard() {
     badgeSrcX = bx0; badgeSrcY = by0; badgeSrcW = contentW; badgeSrcH = contentH;
   }
 
-  // Text always starts at PAD_X; right boundary is left edge of badge (with gap)
+  // Header text has a slightly wider left margin than the fixture rows
+  const HEADER_X = PAD_X + 12;
   const textRightBound = state.badgeImg ? badgeDrawX - 12 : CARD_W - PAD_X;
-  const maxNameW = textRightBound - PAD_X - 8;
+  const maxNameW = textRightBound - HEADER_X - 8;
 
   let nameSize = 52;
   ctx.font = `700 ${nameSize}px "Outfit",sans-serif`;
@@ -1617,20 +1618,20 @@ async function renderCard() {
   ctx.shadowColor = addAlpha(_s, 0.85);
   ctx.shadowBlur = 26;
   ctx.fillStyle = _teamNameCol;
-  ctx.fillText(teamNameNoYear, PAD_X, hy + 2);
+  ctx.fillText(teamNameNoYear, HEADER_X, hy + 2);
   ctx.restore();
   ctx.save();
   ctx.strokeStyle = addAlpha(_teamNameCol, 0.4);
   ctx.lineWidth = 0.5;
   ctx.lineJoin = 'round';
-  ctx.strokeText(teamNameNoYear, PAD_X, hy + 2);
+  ctx.strokeText(teamNameNoYear, HEADER_X, hy + 2);
   ctx.restore();
   ctx.fillStyle = _teamNameCol;
-  ctx.fillText(teamNameNoYear, PAD_X, hy + 2);
+  ctx.fillText(teamNameNoYear, HEADER_X, hy + 2);
 
   ctx.font = `500 15px "Outfit",sans-serif`;
   ctx.fillStyle = ac;
-  ctx.fillText(clubName.toUpperCase(), PAD_X, hy + nameSize + 6);
+  ctx.fillText(clubName.toUpperCase(), HEADER_X, hy + nameSize + 6);
 
   const headerSubTxt   = addAlpha(_autoText, 0.75);
   const headerVenueTxt = addAlpha(_autoText, 0.55);
@@ -1638,13 +1639,13 @@ async function renderCard() {
   if (sublabel) {
     ctx.font = `400 12px "Outfit",sans-serif`;
     ctx.fillStyle = headerSubTxt;
-    ctx.fillText(sublabel.toUpperCase(), PAD_X, hy + nameSize + 22);
+    ctx.fillText(sublabel.toUpperCase(), HEADER_X, hy + nameSize + 22);
   }
   if (homeVenue) {
     ctx.font = `400 11px "Outfit",sans-serif`;
     ctx.fillStyle = headerVenueTxt;
     const venuePrefix = homeVenue.includes(' / ') ? 'HOME VENUES: ' : 'HOME VENUE: ';
-    ctx.fillText(venuePrefix + homeVenue, PAD_X, hy + nameSize + 36);
+    ctx.fillText(venuePrefix + homeVenue, HEADER_X, hy + nameSize + 36);
   }
 
   // Draw badge on the right (after text, so it sits on top if they overlap)
