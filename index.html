@@ -400,7 +400,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.130</span>
+    <span class="badge">Beta 0.132</span>
   </header>
 
   <!-- Left panel -->
@@ -422,11 +422,19 @@ html, body {
 
     <!-- FIXTURES TAB -->
     <div class="panel-body" id="tab-fixtures">
-      <div class="alert alert-info" style="margin-bottom:4px">
-        In PlayHQ, open your team fixture page then <strong>File → Save Page As → Webpage, Complete</strong>. Upload the saved .html file below.
+      <div id="url-section">
+        <div class="field">
+          <label>PlayHQ team URL</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="url-input" placeholder="https://www.playhq.com/afl/org/…" style="flex:1">
+            <button class="btn-sm" id="btn-load-url" style="white-space:nowrap;flex-shrink:0" disabled>Load</button>
+          </div>
+        </div>
+        <div id="proxy-status" style="display:none" class="alert alert-info" style="margin-bottom:4px"></div>
       </div>
+      <div class="divider" style="margin:8px -20px"></div>
       <div class="field">
-        <label>Upload PlayHQ fixture .html file</label>
+        <label>Or upload saved .html file</label>
         <input type="file" id="file-input" accept=".html,.htm">
       </div>
       <div id="parse-feedback"></div>
@@ -556,6 +564,11 @@ html, body {
 </div>
 
 <script>
+
+// ── Proxy config ────────────────────────────────────────────
+// Set this to your deployed Cloudflare Worker URL to enable URL-based loading.
+// Leave as null to use file upload only.
+const PROXY_URL = 'https://playhq-proxy.insanoflash.workers.dev';
 
 // ── Colour helpers (HSL-based for better saturation preservation) ──────────
 function hexToRgb(h) {
@@ -2268,11 +2281,47 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // File input
-document.getElementById('file-input').addEventListener('change', async e => {
-  const file = e.target.files[0]; if (!file) return;
-  const fb = document.getElementById('parse-feedback');
+// ── Shared HTML processing (used by both file upload and URL fetch) ──
+async function processHTMLText(text, fb) {
+  const results = parsePlayHQ(text);
+  if (!results.length) {
+    fb.innerHTML = '<div class="alert alert-error">No fixtures found. Is this a PlayHQ team fixture page?</div>';
+    document.getElementById('round-section').style.display = 'none';
+    return;
+  }
+  state.ourCrest = null;
+  state.badgeImg = null;
+  resetDerivedOverrides();
+  const teamInfo = detectTeamInfo(text);
+  if (teamInfo) {
+    const nameField = document.getElementById('team-name');
+    const sublabelField = document.getElementById('team-sublabel');
+    const clubField = document.getElementById('club-name');
+    if (nameField) { nameField.value = teamInfo.displayName || teamInfo.fullTeamName; nameField.dataset.userEdited = ''; }
+    if (sublabelField) { sublabelField.value = expandLeagueName(teamInfo.league); sublabelField.dataset.userEdited = ''; }
+    const detectedClub = teamInfo.clubName
+      .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC|Juniors|Junior)\s*$/i, '').trim();
+    if (clubField) { clubField.value = detectedClub; clubField.dataset.userEdited = ''; }
+    const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
+    const clubC = state.colours[detectedClub] || state.colours['_default'];
+    const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#1a1a2e';
+    const secondary = clubC ? (isGold ? clubC.primary   : clubC.secondary) : '#ffffff';
+    setColours(primary, secondary);
+    const [crestImg] = await Promise.all([
+      getCrest(detectedClub),
+      loadClubAssets(detectedClub),
+      loadCompetitionAssets(teamInfo.league),
+    ]);
+    state.ourCrest = crestImg || null;
+  } else {
+    await loadCompetitionAssets('');
+  }
+  const venueField = document.getElementById('home-venue');
+  if (venueField) { venueField.value = detectHomeVenue(results); venueField.dataset.userEdited = ''; }
+  processResults(results, fb);
+}
 
-  // Reset card state — hide canvas, restore placeholder, disable export buttons
+function resetCardState() {
   state.generated = false;
   document.getElementById('card-canvas-wrap').style.display = 'none';
   document.getElementById('btn-png').disabled = true;
@@ -2284,72 +2333,59 @@ document.getElementById('file-input').addEventListener('change', async e => {
       <p>Upload a fixture file and click<br><strong style="color:var(--text2)">Generate Card</strong> to preview</p>`;
     document.getElementById('preview').prepend(ph);
   }
+}
 
-  const text = await file.text();
-  const results = parsePlayHQ(text);
-  if (!results.length) {
-    fb.innerHTML = '<div class="alert alert-error">No fixtures found. Make sure you saved the PlayHQ page as <strong>Webpage, Complete</strong>.</div>';
-    document.getElementById('round-section').style.display = 'none';
+// ── URL load button ──────────────────────────────────────────────
+// Show/hide URL section depending on whether proxy is configured
+(function initProxyUI() {
+  const urlSection = document.getElementById('url-section');
+  const urlInput   = document.getElementById('url-input');
+  const loadBtn    = document.getElementById('btn-load-url');
+  const statusEl   = document.getElementById('proxy-status');
+
+  if (!PROXY_URL) {
+    // No proxy configured — hide URL section entirely
+    if (urlSection) urlSection.style.display = 'none';
     return;
   }
 
-  // Always reset club/competition assets on new upload so previous club doesn't persist
-  state.ourCrest = null;
-  state.badgeImg = null;
-  resetDerivedOverrides();
+  // Enable load button when URL looks like a PlayHQ team page
+  urlInput.addEventListener('input', () => {
+    const val = urlInput.value.trim();
+    loadBtn.disabled = !val.startsWith('https://www.playhq.com/');
+  });
 
-  // Auto-detect team info from page title — always reset on new upload
-  const teamInfo = detectTeamInfo(text);
-  if (teamInfo) {
-    const nameField = document.getElementById('team-name');
-    const sublabelField = document.getElementById('team-sublabel');
-    const clubField = document.getElementById('club-name');
-    if (nameField) {
-      nameField.value = teamInfo.displayName || teamInfo.fullTeamName;
-      nameField.dataset.userEdited = '';
+  loadBtn.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    const fb = document.getElementById('parse-feedback');
+    resetCardState();
+    loadBtn.disabled = true;
+    loadBtn.textContent = 'Loading…';
+    statusEl.style.display = 'block';
+    statusEl.textContent = 'Fetching fixture page…';
+    statusEl.className = 'alert alert-info';
+    try {
+      const proxyReq = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}`);
+      if (!proxyReq.ok) throw new Error(`Proxy returned ${proxyReq.status}`);
+      const text = await proxyReq.text();
+      statusEl.style.display = 'none';
+      await processHTMLText(text, fb);
+    } catch (err) {
+      statusEl.style.display = 'none';
+      fb.innerHTML = `<div class="alert alert-error">Could not load fixture: ${err.message}</div>`;
     }
-    if (sublabelField) {
-      sublabelField.value = expandLeagueName(teamInfo.league);
-      sublabelField.dataset.userEdited = '';
-    }
-    // Normalise club name — strip "Football Club", "FC", "Juniors" etc for display and lookup
-    const detectedClub = teamInfo.clubName
-      .replace(/\s+(Football\s+Club|Junior\s+Football\s+Club|FC|JFC|Juniors|Junior)\s*$/i, '')
-      .trim();
-    if (clubField) {
-      clubField.value = detectedClub;
-      clubField.dataset.userEdited = '';
-    }
-    const isGold = (teamInfo.colour || '').toLowerCase() === 'gold';
-    const clubC = state.colours[detectedClub] || state.colours['_default'];
-    const primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : '#1a1a2e';
-    const secondary = clubC ? (isGold ? clubC.primary   : clubC.secondary) : '#ffffff';
-    setColours(primary, secondary);
+    loadBtn.disabled = false;
+    loadBtn.textContent = 'Load';
+  });
+})();
 
-    // Load all assets in parallel — club crest, badge, competition watermark
-    const [crestImg] = await Promise.all([
-      getCrest(detectedClub),
-      loadClubAssets(detectedClub),
-      loadCompetitionAssets(teamInfo.league),
-    ]);
-    state.ourCrest = crestImg || null;
-  } else {
-    // teamInfo failed to parse — still reload default competition assets
-    await loadCompetitionAssets('');
-  }
-  // Auto-select colour scheme from team name
-  // Default purple; gold only if explicitly "Gold" in name
-
-
-  // Auto-detect home venue from fixture data
-  // Always update from fixture file (overrides config default)
-  // Empty string = no dominant venue, show all venues
-  const venueField = document.getElementById('home-venue');
-  if (venueField) {
-    venueField.value = detectHomeVenue(results);
-    venueField.dataset.userEdited = '';
-  }
-  processResults(results, fb);
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const fb = document.getElementById('parse-feedback');
+  resetCardState();
+  const text = await file.text();
+  await processHTMLText(text, fb);
 });
 
 
