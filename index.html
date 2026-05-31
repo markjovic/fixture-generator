@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.142</span>
+    <span class="badge">Beta 0.144</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -516,14 +516,7 @@ html, body {
             <option value="">— select —</option>
           </select>
         </div>
-        <!-- Step 4: Grade -->
-        <div id="grade-select-wrap" style="display:none" class="field">
-          <label>Grade</label>
-          <select id="grade-select">
-            <option value="">— select —</option>
-          </select>
-        </div>
-        <!-- Step 5: Our team (populated after one round fetch) -->
+        <!-- Step 4: Our team (populated after age group selected) -->
         <div id="team-select-wrap" style="display:none" class="field">
           <label>Your team</label>
           <select id="our-team-select">
@@ -2467,39 +2460,48 @@ const GQL_SEASON_GRADES = `
   }
 `;
 
-const GQL_GRADE_ROUNDS = `
-  query gradeRounds($id: ID!) {
-    discoverGrade(gradeID: $id) {
-      id name
-      rounds { id name number current isFinalsRound }
-    }
-  }
-`;
 
-const GQL_ROUND_FIXTURES = `
-  query discoverFixtureByRound($roundID: ID!) {
-    discoverFixtureByRound(roundID: $roundID) {
-      games {
-        id date
-        home { ... on DiscoverTeam { id name logo { sizes { url } } } }
-        away { ... on DiscoverTeam { id name logo { sizes { url } } } }
-        result {
-          home { statistics { count type { value } } }
-          away { statistics { count type { value } } }
+// gradeLadder — get all teams in a grade in one call
+const GQL_GRADE_LADDER = `
+  query gradeLadder($gradeID: ID!) {
+    discoverGrade(gradeID: $gradeID) {
+      id name
+      ladder {
+        standings {
+          team { id name logo { sizes { url dimensions { width height } } } }
         }
-        status { value }
-        allocation { court { venue { name } } }
       }
     }
   }
 `;
 
-// ── Known competitions (season IDs stable per year) ──────────────
-// Add new competitions here as needed.
-// ── Known competitions (org IDs are permanent; seasons discovered from API) ──
-// Add new competitions here with their PlayHQ organisation ID.
-// ── Known competitions — org IDs are permanent ───────────────────
-// Seasons are discovered live from the API via discoverCompetitions.
+// teamFixture — all fixtures for a specific team, pre-filtered by PlayHQ
+const GQL_TEAM_FIXTURE = `
+  query teamFixture($teamID: ID!) {
+    discoverTeamFixture(teamID: $teamID) {
+      id name
+      grade { id name type }
+      fixture {
+        games {
+          id date
+          home { ... on DiscoverTeam { id name logo { sizes { url } } } }
+          away { ... on DiscoverTeam { id name logo { sizes { url } } } }
+          result {
+            home { statistics { count type { value } } }
+            away { statistics { count type { value } } }
+          }
+          status { value }
+          allocation {
+            time
+            court { venue { name } }
+          }
+        }
+      }
+    }
+  }
+`;
+
+// ── Known competitions (org IDs are permanent) ───────────────────
 const KNOWN_COMPETITIONS = [
   { name: 'Eastern Football Netball League', orgID: '383836bb', league: 'Eastern Football Netball League' },
   { name: 'Western Football Netball League', orgID: 'c1d04617', league: 'Western Football Netball League' },
@@ -2623,61 +2625,15 @@ function apiGameToFixture(game, ourTeamName, roundName) {
   };
 }
 
-// ── Fetch all rounds for a grade ─────────────────────────────────
-async function fetchGradeFixtures(gradeId, ourTeamName) {
-  const gradeData = await gqlQuery(GQL_GRADE_ROUNDS, { id: gradeId });
-  const grade = gradeData?.discoverGrade;
-  if (!grade) throw new Error('Grade not found');
-  const rounds = (grade.rounds || []).filter(r => !r.isFinalsRound);
-  if (!rounds.length) throw new Error('No rounds found');
-
-  const results = [];
-  const BATCH = 6;
-  for (let i = 0; i < rounds.length; i += BATCH) {
-    const batch = rounds.slice(i, i + BATCH);
-    const batchData = await Promise.all(
-      batch.map(r => gqlQuery(GQL_ROUND_FIXTURES, { roundID: r.id }))
-    );
-    batchData.forEach((d, bi) => {
-      (d?.discoverFixtureByRound?.games || []).forEach(g => {
-        const fix = apiGameToFixture(g, ourTeamName, batch[bi].name);
-        if (fix) results.push(fix);
-      });
-    });
-  }
-  return results;
-}
-
-// ── Scan first round to collect team names in a grade ────────────
-async function fetchTeamsInGrade(gradeId) {
-  // Fetch ALL rounds and union team names — avoids missing teams due to byes in R1
-  const gradeData = await gqlQuery(GQL_GRADE_ROUNDS, { id: gradeId });
-  const rounds = (gradeData?.discoverGrade?.rounds || []).filter(r => !r.isFinalsRound);
-  if (!rounds.length) return [];
-  const teams = new Set();
-  const BATCH = 6;
-  for (let i = 0; i < rounds.length; i += BATCH) {
-    const batch = rounds.slice(i, i + BATCH);
-    const batchData = await Promise.all(batch.map(r => gqlQuery(GQL_ROUND_FIXTURES, { roundID: r.id })));
-    batchData.forEach(d => {
-      (d?.discoverFixtureByRound?.games || []).forEach(g => {
-        if (g.home && g.away) { teams.add(g.home.name); teams.add(g.away.name); }
-      });
-    });
-  }
-  return [...teams].sort();
-}
 
 // ── Main cascade UI ──────────────────────────────────────────────
 (function initAPIUI() {
   const compSel    = document.getElementById('comp-select');
   const seasonSel  = document.getElementById('season-select');
   const ageSel     = document.getElementById('age-select');
-  const gradeSel   = document.getElementById('grade-select');
   const ourTeamSel = document.getElementById('our-team-select');
   const seasonWrap = document.getElementById('season-select-wrap');
   const ageWrap    = document.getElementById('age-select-wrap');
-  const gradeWrap  = document.getElementById('grade-select-wrap');
   const teamWrap   = document.getElementById('team-select-wrap');
   const confirmBtn = document.getElementById('btn-confirm-team');
   const statusEl   = document.getElementById('api-status');
@@ -2691,12 +2647,11 @@ async function fetchTeamsInGrade(gradeId) {
 
   // Reset dropdowns from a given step downward
   function resetFrom(step) {
-    const steps = ['season','age','grade','team'];
+    const steps = ['season','age','team'];
     const idx   = steps.indexOf(step);
-    if (idx <= 0) { seasonWrap.style.display='none'; seasonSel.innerHTML='<option value="">— select —</option>'; }
-    if (idx <= 1) { ageWrap.style.display='none';    ageSel.innerHTML   ='<option value="">— select —</option>'; }
-    if (idx <= 2) { gradeWrap.style.display='none';  gradeSel.innerHTML ='<option value="">— select —</option>'; }
-    if (idx <= 3) { teamWrap.style.display='none';   ourTeamSel.innerHTML='<option value="">— select —</option>'; }
+    if (idx <= 0) { seasonWrap.style.display='none'; seasonSel.innerHTML  ='<option value="">— select —</option>'; }
+    if (idx <= 1) { ageWrap.style.display='none';    ageSel.innerHTML     ='<option value="">— select —</option>'; }
+    if (idx <= 2) { teamWrap.style.display='none';   ourTeamSel.innerHTML ='<option value="">— select —</option>'; }
   }
 
   // Populate competition dropdown from KNOWN_COMPETITIONS
@@ -2785,41 +2740,23 @@ async function fetchTeamsInGrade(gradeId) {
     } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
   });
 
-  // ── Step 3: Age group → populate grade dropdown ─────────────
-  ageSel.addEventListener('change', () => {
-    resetFrom('grade');
+  // ── Step 3: Age group → fetch all fixtures, populate team list ──
+  ageSel.addEventListener('change', async () => {
+    resetFrom('team');
     const age = ageSel.value;
     if (!age) return;
     const grades = _apiState.ageMap?.[age] || [];
-    grades.forEach(g => {
-      const opt       = document.createElement('option');
-      opt.value       = g.id;
-      // Strip age prefix from grade name: "U12 - B" → "B"
-      const label     = g.name.replace(/^[^-]+-\s*/, '').trim() || g.name;
-      opt.textContent = grades.length === 1 ? g.name : label;
-      gradeSel.appendChild(opt);
-    });
-    if (grades.length === 1) gradeSel.value = grades[0].id;
-    gradeWrap.style.display = 'flex';
-    if (grades.length === 1) gradeSel.dispatchEvent(new Event('change'));
-  });
-
-  // ── Step 4: Grade → fetch one round to get team list ────────
-  gradeSel.addEventListener('change', async () => {
-    resetFrom('team');
-    const gradeId = gradeSel.value;
-    if (!gradeId) return;
+    if (!grades.length) return;
     setStatus('Loading teams…');
     try {
-      const teams = await fetchTeamsInGrade(gradeId);
-      if (!teams.length) throw new Error('No teams found in this grade');
-      teams.forEach(name => {
-        const opt       = document.createElement('option');
-        opt.value       = name;
-        // Keep colour/descriptor after age group so "Norwood Purple" and "Norwood Gold" are distinguishable
+      const teams = await fetchTeamsInAgeGroup(grades);
+      if (!teams.length) throw new Error('No teams found');
+      teams.forEach(({ name, teamID, logoUrl }) => {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify({ name, teamID, logoUrl });
         const displayName = name
           .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|JFC|Juniors|Junior|FC)\s*$/i, '')
-          .replace(/\s+U(\d+)\s*/i, ' ')   // collapse "U12 " to a space, keeping what follows
+          .replace(/\s+U\d+\s*/i, ' ')
           .replace(/\s*\/\s*/g, ' / ')
           .trim().toUpperCase();
         opt.textContent = displayName;
@@ -2830,11 +2767,12 @@ async function fetchTeamsInGrade(gradeId) {
     } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
   });
 
-  // ── Step 5: Confirm team → load all fixtures ─────────────────
+  // ── Step 4: Confirm team → load all fixtures via discoverTeamFixture ─
   confirmBtn.addEventListener('click', async () => {
-    const gradeId = gradeSel.value;
-    const ourTeam = ourTeamSel.value;
-    if (!gradeId || !ourTeam) { setStatus('Please select a team', 'error'); return; }
+    const teamVal = ourTeamSel.value;
+    if (!teamVal) { setStatus('Please select a team', 'error'); return; }
+    const { name: ourTeam, teamID, logoUrl: teamLogoUrl } = JSON.parse(teamVal);
+    if (!teamID || !ourTeam) { setStatus('Please select a team', 'error'); return; }
 
     resetCardState();
     confirmBtn.disabled    = true;
@@ -2843,12 +2781,10 @@ async function fetchTeamsInGrade(gradeId) {
 
     try {
       setStatus('Fetching fixtures…');
-      const results = await fetchGradeFixtures(gradeId, ourTeam);
+      const results = await fetchTeamFixtures(teamID, ourTeam);
       if (!results.length) throw new Error('No fixtures found');
 
-      // Derive team display info
-      const selectedGrade = _apiState.grades.find(g => g.id === gradeId);
-      const age    = parseGradeAge(selectedGrade?.name||'', selectedGrade?.age?.name, selectedGrade?.gender?.name);
+      const age    = ageSel.value;
       const colour = extractColour(ourTeam);
       const club   = ourTeam
         .replace(/\s+U\d+.*$/i, '')
@@ -2864,7 +2800,6 @@ async function fetchTeamsInGrade(gradeId) {
       if (clubEl)     { clubEl.value     = club;                clubEl.dataset.userEdited     = ''; }
       if (sublabelEl) { sublabelEl.value = _apiState.league;    sublabelEl.dataset.userEdited = ''; }
 
-      // Colours: colours.json → crest sample → fallback
       const isGold  = colour.toLowerCase() === 'gold';
       const clubC   = state.colours[club] || state.colours['_default'];
       let primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : null;
@@ -2874,7 +2809,7 @@ async function fetchTeamsInGrade(gradeId) {
       state.badgeImg = null;
       resetDerivedOverrides();
 
-      const ourLogoUrl = results[0]?._ourLogoUrl || null;
+      const ourLogoUrl = teamLogoUrl || results[0]?._ourLogoUrl || null;
       if (ourLogoUrl) {
         setStatus('Loading logo…');
         const logoImg = await loadImage(ourLogoUrl);
