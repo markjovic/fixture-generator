@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.146</span>
+    <span class="badge">Beta 0.147</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -523,6 +523,14 @@ html, body {
             <option value="">— select —</option>
           </select>
           <button class="btn-generate" id="btn-confirm-team" style="margin-top:8px">Confirm team</button>
+        </div>
+        <!-- Manual org ID lookup -->
+        <div style="margin-top:4px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Or enter org ID manually</div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="org-id-input" placeholder="e.g. 383836bb" style="flex:1;font-family:monospace;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:13px;padding:8px 10px;outline:none">
+            <button class="btn-sm" id="btn-load-org" style="white-space:nowrap;flex-shrink:0">Look up</button>
+          </div>
         </div>
         <div id="api-status" style="display:none;margin-top:8px" class="alert alert-info"></div>
       </div>
@@ -2357,6 +2365,8 @@ document.getElementById('btn-print').addEventListener('click', () => {
 // ── Init ────────────────────────────────────────────────────
 (async () => {
   await loadAllAssets();
+  // Populate competition dropdown now that KNOWN_COMPETITIONS is loaded from config
+  if (typeof populateCompDropdown === 'function') populateCompDropdown();
   // Populate club name from config
   const clubNameEl = document.getElementById('club-name');
   if (clubNameEl && state.config.club_name) {
@@ -2695,12 +2705,37 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
     if (idx <= 2) { teamWrap.style.display='none';   ourTeamSel.innerHTML ='<option value="">— select —</option>'; }
   }
 
-  // Populate competition dropdown from KNOWN_COMPETITIONS
-  KNOWN_COMPETITIONS.forEach(comp => {
-    const opt = document.createElement('option');
-    opt.value       = comp.name;
-    opt.textContent = comp.name;
-    compSel.appendChild(opt);
+  // Populated after loadAllAssets() via populateCompDropdown()
+  function populateCompDropdown() {
+    compSel.innerHTML = '<option value="">— select —</option>';
+    KNOWN_COMPETITIONS.forEach(comp => {
+      const opt = document.createElement('option');
+      opt.value       = comp.name;
+      opt.textContent = comp.name;
+      compSel.appendChild(opt);
+    });
+  }
+
+  // ── Manual org ID lookup ─────────────────────────────────────────
+  const orgInput = document.getElementById('org-id-input');
+  const orgBtn   = document.getElementById('btn-load-org');
+  orgInput?.addEventListener('keydown', e => { if (e.key === 'Enter') orgBtn.click(); });
+  orgBtn?.addEventListener('click', async () => {
+    const orgID = orgInput.value.trim();
+    if (!orgID) return;
+    // Check if already in list
+    const existing = KNOWN_COMPETITIONS.find(c => c.orgID === orgID);
+    if (existing) {
+      compSel.value = existing.name;
+      compSel.dispatchEvent(new Event('change'));
+      return;
+    }
+    // Add as ad-hoc entry and trigger load
+    const adHoc = { name: orgID, orgID, league: '' };
+    KNOWN_COMPETITIONS = [...KNOWN_COMPETITIONS, adHoc];
+    populateCompDropdown();
+    compSel.value = orgID;
+    compSel.dispatchEvent(new Event('change'));
   });
 
   // ── Step 1: Competition → fetch seasons via API ─────────────────
