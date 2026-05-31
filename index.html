@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.133</span>
+    <span class="badge">Beta 0.136</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -494,15 +494,44 @@ html, body {
 
     <!-- FIXTURES TAB -->
     <div class="panel-body" id="tab-fixtures">
-      <div id="url-section">
+      <div id="api-section">
+        <!-- Step 1: Competition -->
         <div class="field">
-          <label>PlayHQ team URL</label>
-          <div style="display:flex;gap:8px">
-            <input type="text" id="url-input" placeholder="https://www.playhq.com/afl/org/…" style="flex:1">
-            <button class="btn-sm" id="btn-load-url" style="white-space:nowrap;flex-shrink:0" disabled>Load</button>
-          </div>
+          <label>Competition</label>
+          <select id="comp-select">
+            <option value="">— select —</option>
+          </select>
         </div>
-        <div id="proxy-status" style="display:none" class="alert alert-info" style="margin-bottom:4px"></div>
+        <!-- Step 2: Season (discovered from API) -->
+        <div id="season-select-wrap" style="display:none" class="field">
+          <label>Season</label>
+          <select id="season-select">
+            <option value="">— select —</option>
+          </select>
+        </div>
+        <!-- Step 3: Age group -->
+        <div id="age-select-wrap" style="display:none" class="field">
+          <label>Age group</label>
+          <select id="age-select">
+            <option value="">— select —</option>
+          </select>
+        </div>
+        <!-- Step 4: Grade -->
+        <div id="grade-select-wrap" style="display:none" class="field">
+          <label>Grade</label>
+          <select id="grade-select">
+            <option value="">— select —</option>
+          </select>
+        </div>
+        <!-- Step 5: Our team (populated after one round fetch) -->
+        <div id="team-select-wrap" style="display:none" class="field">
+          <label>Your team</label>
+          <select id="our-team-select">
+            <option value="">— select —</option>
+          </select>
+          <button class="btn-generate" id="btn-confirm-team" style="margin-top:8px">Confirm team</button>
+        </div>
+        <div id="api-status" style="display:none;margin-top:8px" class="alert alert-info"></div>
       </div>
       <div class="divider" style="margin:8px -20px"></div>
       <div class="field">
@@ -525,7 +554,7 @@ html, body {
       </div>
       <div id="empty-state" style="padding:32px 20px;text-align:center;border:0.5px dashed var(--border);border-radius:var(--radius-lg);color:var(--text3)">
         <p style="font-size:14px;margin-bottom:6px">No fixtures loaded</p>
-        <p style="font-size:12px">Upload your PlayHQ fixture page above</p>
+        <p style="font-size:12px">Enter a season ID or upload a fixture page above</p>
       </div>
     </div>
 
@@ -640,7 +669,7 @@ html, body {
 // ── Proxy config ────────────────────────────────────────────
 // Set this to your deployed Cloudflare Worker URL to enable URL-based loading.
 // Leave as null to use file upload only.
-const PROXY_URL = 'https://playhq-proxy.insanoflash.workers.dev';
+const GRAPHQL_PROXY = 'https://fixture-card-proxy.insanoflash.workers.dev';
 
 // ── Colour helpers (HSL-based for better saturation preservation) ──────────
 function hexToRgb(h) {
@@ -1396,7 +1425,7 @@ const CREST_ALIASES = {
   'WILLIAMSTOWN JUNIORS':   'WILLIAMSTOWN',
 };
 
-async function getCrest(playhqName) {
+async function getCrest(playhqName, apiLogoUrl) {
   // Strip age group suffix and normalise slash spacing
   let cleaned = playhqName.replace(/\s+U\d+.*$/i, '').trim().toUpperCase();
   cleaned = cleaned.replace(/\s*\/\s*/g, ' / ');  // "GOLD/HEATHMONT" → "GOLD / HEATHMONT"
@@ -1405,20 +1434,25 @@ async function getCrest(playhqName) {
   // Strip "Juniors" / "Junior" suffix (e.g. "FLEMINGTON JUNIORS" → "FLEMINGTON")
   cleaned = cleaned.replace(/\s+JUNIORS?\s*$/i, '').trim();
   // Strip colour words to get to the club name: "NORWOOD GOLD" → "NORWOOD"
-  const COLOUR_WORDS = ['PURPLE','GOLD','BLUE','RED','GREEN','WHITE','BLACK','SILVER','NAVY','YELLOW','ORANGE','TEAL'];
-  COLOUR_WORDS.forEach(c => { cleaned = cleaned.replace(new RegExp('\\s+' + c + '\\s*$'), '').trim(); });
+  const COLOUR_WORDS_CREST = ['PURPLE','GOLD','BLUE','RED','GREEN','WHITE','BLACK','SILVER','NAVY','YELLOW','ORANGE','TEAL'];
+  COLOUR_WORDS_CREST.forEach(c => { cleaned = cleaned.replace(new RegExp('\\s+' + c + '\\s*$'), '').trim(); });
   // Resolve alias
   const key = CREST_ALIASES[cleaned] || cleaned;
   // Check cache
   if (state.crests[key]) return state.crests[key];
-  // Load from assets/clubs/{slug}/crest.png
+  // Load from local assets/clubs/{slug}/crest.png first
   const slug = key.toLowerCase().replace(/\s+/g, '_');
   const img = await loadImage(`assets/clubs/${slug}/crest.png`);
   if (img) { state.crests[key] = img; return img; }
-  // Word-overlap fallback
+  // Word-overlap fallback against already-cached crests
   for (const fname of Object.keys(state.crests)) {
     const fwords = fname.split(' ');
     if (fwords.every(w => cleaned.includes(w))) return state.crests[fname];
+  }
+  // Fall back to API-supplied logo URL (Cloudinary CDN — no CORS issues for <img>)
+  if (apiLogoUrl) {
+    const apiImg = await loadImage(apiLogoUrl);
+    if (apiImg) { state.crests[key] = apiImg; return apiImg; }
   }
   return null;
 }
@@ -1487,7 +1521,7 @@ async function renderCard() {
   const allRows = state.rounds.filter((_,i) => state.selected.has(i));
   const fixtures = allRows.filter(r => r.type === 'fixture');
 
-  await Promise.all(fixtures.map(f => getCrest(f.opponent)));
+  await Promise.all(fixtures.map(f => getCrest(f.opponent, f._oppLogoUrl)));
 
   // Layout constants — must be declared before height calculation
   const PAD_X = 20, PAD_TOP = 24, PAD_BOT = 26;
@@ -1865,7 +1899,7 @@ async function renderCard() {
     // Pills
     const leftIsNorwood = f.isHome;
     // Look up opp crest via getCrest so joint-team stripping logic applies
-    const oppCrest = await getCrest(f.opponent);
+    const oppCrest = await getCrest(f.opponent, f._oppLogoUrl);
     const leftCrest  = leftIsNorwood ? state.ourCrest : oppCrest;
     const rightCrest = leftIsNorwood ? oppCrest : state.ourCrest;
     const ourClubPillName = (document.getElementById('club-name')?.value || 'HOME').toUpperCase().split(' ').slice(0,2).join(' ');
@@ -2402,55 +2436,465 @@ function resetCardState() {
     const ph = document.createElement('div');
     ph.className = 'preview-placeholder';
     ph.innerHTML = `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
-      <p>Upload a fixture file and click<br><strong style="color:var(--text2)">Generate Card</strong> to preview</p>`;
+      <p>Load fixtures and click<br><strong style="color:var(--text2)">Generate Card</strong> to preview</p>`;
     document.getElementById('preview').prepend(ph);
   }
 }
 
-// ── URL load button ──────────────────────────────────────────────
-// Show/hide URL section depending on whether proxy is configured
-(function initProxyUI() {
-  const urlSection = document.getElementById('url-section');
-  const urlInput   = document.getElementById('url-input');
-  const loadBtn    = document.getElementById('btn-load-url');
-  const statusEl   = document.getElementById('proxy-status');
+// ── GraphQL helpers ─────────────────────────────────────────────
+async function gqlQuery(query, variables) {
+  const res = await fetch(GRAPHQL_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+  if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors[0].message);
+  return json.data;
+}
 
-  if (!PROXY_URL) {
-    // No proxy configured — hide URL section entirely
-    if (urlSection) urlSection.style.display = 'none';
-    return;
+const GQL_SEASON_GRADES = `
+  query gradeListDiscoverSeason($id: ID!) {
+    discoverSeason(seasonID: $id) {
+      id name
+      grades {
+        id name
+        age { name }
+        gender { name }
+      }
+    }
+  }
+`;
+
+const GQL_GRADE_ROUNDS = `
+  query gradeRounds($id: ID!) {
+    discoverGrade(gradeID: $id) {
+      id name
+      rounds { id name number current isFinalsRound }
+    }
+  }
+`;
+
+const GQL_ROUND_FIXTURES = `
+  query discoverFixtureByRound($roundID: ID!) {
+    discoverFixtureByRound(roundID: $roundID) {
+      games {
+        id date isBye
+        home { ... on DiscoverTeam { id name logo { sizes { url } } } }
+        away { ... on DiscoverTeam { id name logo { sizes { url } } } }
+        result {
+          home { statistics { count type { value } } }
+          away { statistics { count type { value } } }
+        }
+        status { value }
+        allocation { court { venue { name } } }
+      }
+    }
+  }
+`;
+
+// ── Known competitions (season IDs stable per year) ──────────────
+// Add new competitions here as needed.
+// ── Known competitions (org IDs are permanent; seasons discovered from API) ──
+// Add new competitions here with their PlayHQ organisation ID.
+const KNOWN_COMPETITIONS = [
+  { name: 'Eastern Football Netball League', orgID: '383836bb', league: 'Eastern Football Netball League' },
+  { name: 'Western Football Netball League', orgID: 'c1d04617', league: 'Western Football Netball League' },
+];
+
+// ── API state ────────────────────────────────────────────────────
+let _apiState = {
+  grades: [],
+  ageMap:  {},
+  seasonName: '',
+  league: '',
+};
+
+// ── GQL: competitions + seasons for an org ───────────────────────
+const GQL_COMPETITIONS = `
+  query discoverCompetitions($orgID: ID!) {
+    discoverCompetitions(organisationID: $orgID) {
+      id name
+      seasons {
+        id name
+        status { value }
+      }
+    }
+  }
+`;
+
+// ── Grade age/gender parsing ─────────────────────────────────────
+function parseGradeAge(gradeName, ageName, genderName) {
+  let age = (ageName || '').replace(/^U0(\d)$/, 'U$1');
+  const gender = (genderName || '').toLowerCase();
+  if (gender === 'girls' || gender === 'women') age += ' Girls';
+  return age.trim();
+}
+
+// ── Extract colour from full team name ───────────────────────────
+const COLOUR_WORDS_API = ['Purple','Gold','Blue','Red','Green','White','Black','Silver','Navy','Yellow','Orange','Teal'];
+function extractColour(teamName) {
+  for (const c of COLOUR_WORDS_API) {
+    if (new RegExp('\\b' + c + '\\b', 'i').test(teamName)) return c;
+  }
+  return '';
+}
+
+// ── Sample dominant colours from a crest image URL ───────────────
+// Priority: coloured pixels → dark (black) → light (white)
+async function sampleCrestColours(imgUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = 48; cv.height = 48;
+        const cx = cv.getContext('2d');
+        cx.drawImage(img, 0, 0, 48, 48);
+        const px = cx.getImageData(0, 0, 48, 48).data;
+        const coloured = {}, darks = {}, lights = {};
+        for (let i = 0; i < px.length; i += 4) {
+          if (px[i+3] < 128) continue;
+          const r = px[i], g = px[i+1], b = px[i+2];
+          const [,, l] = hexToHsl(rgbToHex(r, g, b));
+          const qr = Math.round(r/8)*8, qg = Math.round(g/8)*8, qb = Math.round(b/8)*8;
+          const key = `${qr},${qg},${qb}`;
+          if      (l < 0.10) darks[key]    = (darks[key]    || 0) + 1;
+          else if (l > 0.88) lights[key]   = (lights[key]   || 0) + 1;
+          else               coloured[key] = (coloured[key] || 0) + 1;
+        }
+        const toHex = k => { const [r,g,b] = k.split(',').map(Number); return rgbToHex(r,g,b); };
+        const top = obj => Object.entries(obj).sort((a,b) => b[1]-a[1]);
+        const pool = [...top(coloured), ...top(darks), ...top(lights)];
+        if (!pool.length) return resolve(null);
+        resolve({ primary: toHex(pool[0][0]), secondary: pool[1] ? toHex(pool[1][0]) : '#ffffff' });
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = imgUrl;
+  });
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Convert API game → fixture row ──────────────────────────────
+function apiGameToFixture(game, ourTeamName, roundName) {
+  if (game.isBye || !game.home || !game.away) return null;
+  const ourUp  = ourTeamName.replace(/\s+U\d+.*$/i,'').trim().toUpperCase();
+  const homeUp = (game.home.name||'').replace(/\s+U\d+.*$/i,'').trim().toUpperCase();
+  const isHome = homeUp === ourUp;
+  const opp    = isHome ? game.away : game.home;
+  const ourSide= isHome ? game.home : game.away;
+
+  let date = '', time = '';
+  if (game.date) {
+    const d = new Date(game.date);
+    date = `${d.getDate()}/${d.getMonth()+1}`;
+    time = `${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
+  }
+  const venue = game.allocation?.court?.venue?.name || '';
+
+  let homeScore = null, awayScore = null, weWon = null;
+  if (game.status?.value === 'FINAL' && game.result) {
+    const getScore = side => (side?.statistics||[]).find(s=>s.type?.value==='TOTAL_SCORE')?.count ?? null;
+    homeScore = getScore(game.result.home);
+    awayScore = getScore(game.result.away);
+    if (homeScore !== null && awayScore !== null) {
+      const ourScore = isHome ? homeScore : awayScore;
+      const oppScore = isHome ? awayScore : homeScore;
+      weWon = ourScore === oppScore ? null : ourScore > oppScore;
+    }
   }
 
-  // Enable load button when URL looks like a PlayHQ team page
-  urlInput.addEventListener('input', () => {
-    const val = urlInput.value.trim();
-    loadBtn.disabled = !val.startsWith('https://www.playhq.com/');
+  const logoUrl = img => img?.logo?.sizes?.[3]?.url || img?.logo?.sizes?.[0]?.url || null;
+  return {
+    type: 'fixture',
+    round: roundName.replace(/^Round\s*/i, 'R'),
+    date, time, opponent: opp.name || '', venue, isHome,
+    homeScore, awayScore, weWon,
+    _oppLogoUrl: logoUrl(opp),
+    _ourLogoUrl: logoUrl(ourSide),
+  };
+}
+
+// ── Fetch all rounds for a grade ─────────────────────────────────
+async function fetchGradeFixtures(gradeId, ourTeamName) {
+  const gradeData = await gqlQuery(GQL_GRADE_ROUNDS, { id: gradeId });
+  const grade = gradeData?.discoverGrade;
+  if (!grade) throw new Error('Grade not found');
+  const rounds = (grade.rounds || []).filter(r => !r.isFinalsRound);
+  if (!rounds.length) throw new Error('No rounds found');
+
+  const results = [];
+  const BATCH = 6;
+  for (let i = 0; i < rounds.length; i += BATCH) {
+    const batch = rounds.slice(i, i + BATCH);
+    const batchData = await Promise.all(
+      batch.map(r => gqlQuery(GQL_ROUND_FIXTURES, { roundID: r.id }))
+    );
+    batchData.forEach((d, bi) => {
+      (d?.discoverFixtureByRound?.games || []).forEach(g => {
+        const fix = apiGameToFixture(g, ourTeamName, batch[bi].name);
+        if (fix) results.push(fix);
+      });
+    });
+  }
+  return results;
+}
+
+// ── Scan first round to collect team names in a grade ────────────
+async function fetchTeamsInGrade(gradeId) {
+  const gradeData = await gqlQuery(GQL_GRADE_ROUNDS, { id: gradeId });
+  const round = (gradeData?.discoverGrade?.rounds || []).find(r => !r.isFinalsRound);
+  if (!round) return [];
+  const d = await gqlQuery(GQL_ROUND_FIXTURES, { roundID: round.id });
+  const teams = new Set();
+  (d?.discoverFixtureByRound?.games || []).forEach(g => {
+    if (!g.isBye && g.home && g.away) { teams.add(g.home.name); teams.add(g.away.name); }
+  });
+  return [...teams].sort();
+}
+
+// ── Main cascade UI ──────────────────────────────────────────────
+(function initAPIUI() {
+  const compSel    = document.getElementById('comp-select');
+  const seasonSel  = document.getElementById('season-select');
+  const ageSel     = document.getElementById('age-select');
+  const gradeSel   = document.getElementById('grade-select');
+  const ourTeamSel = document.getElementById('our-team-select');
+  const seasonWrap = document.getElementById('season-select-wrap');
+  const ageWrap    = document.getElementById('age-select-wrap');
+  const gradeWrap  = document.getElementById('grade-select-wrap');
+  const teamWrap   = document.getElementById('team-select-wrap');
+  const confirmBtn = document.getElementById('btn-confirm-team');
+  const statusEl   = document.getElementById('api-status');
+  const fb         = document.getElementById('parse-feedback');
+
+  function setStatus(msg, type='info') {
+    statusEl.style.display = msg ? 'block' : 'none';
+    statusEl.textContent   = msg;
+    statusEl.className     = `alert alert-${type}`;
+  }
+
+  // Reset dropdowns from a given step downward
+  function resetFrom(step) {
+    const steps = ['season','age','grade','team'];
+    const idx   = steps.indexOf(step);
+    if (idx <= 0) { seasonWrap.style.display='none'; seasonSel.innerHTML='<option value="">— select —</option>'; }
+    if (idx <= 1) { ageWrap.style.display='none';    ageSel.innerHTML   ='<option value="">— select —</option>'; }
+    if (idx <= 2) { gradeWrap.style.display='none';  gradeSel.innerHTML ='<option value="">— select —</option>'; }
+    if (idx <= 3) { teamWrap.style.display='none';   ourTeamSel.innerHTML='<option value="">— select —</option>'; }
+  }
+
+  // Populate competition dropdown from KNOWN_COMPETITIONS
+  KNOWN_COMPETITIONS.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value       = c.orgID;
+    opt.textContent = c.name;
+    compSel.appendChild(opt);
   });
 
-  loadBtn.addEventListener('click', async () => {
-    const url = urlInput.value.trim();
-    if (!url) return;
-    const fb = document.getElementById('parse-feedback');
-    resetCardState();
-    loadBtn.disabled = true;
-    loadBtn.textContent = 'Loading…';
-    statusEl.style.display = 'block';
-    statusEl.textContent = 'Fetching fixture page…';
-    statusEl.className = 'alert alert-info';
+  // ── Step 1: Competition → fetch seasons ──────────────────────
+  compSel.addEventListener('change', async () => {
+    resetFrom('season');
+    setStatus('');
+    const orgID = compSel.value;
+    if (!orgID) return;
+    setStatus('Loading seasons…');
     try {
-      const proxyReq = await fetch(`${PROXY_URL}/?url=${encodeURIComponent(url)}`);
-      if (!proxyReq.ok) throw new Error(`Proxy returned ${proxyReq.status}`);
-      const text = await proxyReq.text();
-      statusEl.style.display = 'none';
-      await processHTMLText(text, fb);
-    } catch (err) {
-      statusEl.style.display = 'none';
-      fb.innerHTML = `<div class="alert alert-error">Could not load fixture: ${err.message}</div>`;
+      const data = await gqlQuery(GQL_COMPETITIONS, { orgID });
+      const comps = data?.discoverCompetitions || [];
+      if (!comps.length) throw new Error('No competitions found for this organisation');
+      // Collect all seasons across competitions, deduplicate by id
+      const seen = new Set();
+      const allSeasons = [];
+      comps.forEach(comp => {
+        (comp.seasons || []).forEach(s => {
+          if (!seen.has(s.id)) {
+            seen.add(s.id);
+            allSeasons.push({ ...s, compName: comp.name });
+          }
+        });
+      });
+      // Sort: ACTIVE first, then by name descending (2026 > 2025)
+      allSeasons.sort((a, b) => {
+        if (a.status?.value === 'ACTIVE' && b.status?.value !== 'ACTIVE') return -1;
+        if (b.status?.value === 'ACTIVE' && a.status?.value !== 'ACTIVE') return  1;
+        return b.name.localeCompare(a.name);
+      });
+      allSeasons.forEach(s => {
+        const opt       = document.createElement('option');
+        opt.value       = s.id;
+        const tag       = s.status?.value === 'ACTIVE' ? ' ✓' : '';
+        opt.textContent = s.name + tag;
+        seasonSel.appendChild(opt);
+      });
+      // Auto-select if only one, or select the first ACTIVE
+      const active = allSeasons.find(s => s.status?.value === 'ACTIVE');
+      if (allSeasons.length === 1) seasonSel.value = allSeasons[0].id;
+      else if (active) seasonSel.value = active.id;
+      seasonWrap.style.display = 'flex';
+      setStatus('');
+      // If auto-selected, trigger next step
+      if (seasonSel.value) seasonSel.dispatchEvent(new Event('change'));
+    } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
+  });
+
+  // ── Step 2: Season → fetch grade list ───────────────────────
+  seasonSel.addEventListener('change', async () => {
+    resetFrom('age');
+    setStatus('');
+    const seasonID = seasonSel.value;
+    if (!seasonID) return;
+    setStatus('Loading grades…');
+    try {
+      const data   = await gqlQuery(GQL_SEASON_GRADES, { id: seasonID });
+      const season = data?.discoverSeason;
+      if (!season?.grades?.length) throw new Error('No grades found for this season');
+      _apiState.grades     = season.grades;
+      _apiState.seasonName = season.name || '';
+      _apiState.league     = KNOWN_COMPETITIONS.find(c => c.orgID === compSel.value)?.league || '';
+
+      // Group grades by age group
+      const ageOrder = [], ageMap = {};
+      season.grades.forEach(g => {
+        const age = parseGradeAge(g.name, g.age?.name, g.gender?.name);
+        if (!ageMap[age]) { ageMap[age] = []; ageOrder.push(age); }
+        ageMap[age].push(g);
+      });
+      _apiState.ageMap = ageMap;
+
+      ageOrder.forEach(age => {
+        const opt       = document.createElement('option');
+        opt.value       = age;
+        opt.textContent = age;
+        ageSel.appendChild(opt);
+      });
+      ageWrap.style.display = 'flex';
+      setStatus('');
+    } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
+  });
+
+  // ── Step 3: Age group → populate grade dropdown ─────────────
+  ageSel.addEventListener('change', () => {
+    resetFrom('grade');
+    const age = ageSel.value;
+    if (!age) return;
+    const grades = _apiState.ageMap?.[age] || [];
+    grades.forEach(g => {
+      const opt       = document.createElement('option');
+      opt.value       = g.id;
+      // Strip age prefix from grade name: "U12 - B" → "B"
+      const label     = g.name.replace(/^[^-]+-\s*/, '').trim() || g.name;
+      opt.textContent = grades.length === 1 ? g.name : label;
+      gradeSel.appendChild(opt);
+    });
+    if (grades.length === 1) gradeSel.value = grades[0].id;
+    gradeWrap.style.display = 'flex';
+    if (grades.length === 1) gradeSel.dispatchEvent(new Event('change'));
+  });
+
+  // ── Step 4: Grade → fetch one round to get team list ────────
+  gradeSel.addEventListener('change', async () => {
+    resetFrom('team');
+    const gradeId = gradeSel.value;
+    if (!gradeId) return;
+    setStatus('Loading teams…');
+    try {
+      const teams = await fetchTeamsInGrade(gradeId);
+      if (!teams.length) throw new Error('No teams found in this grade');
+      teams.forEach(name => {
+        const opt       = document.createElement('option');
+        opt.value       = name;
+        opt.textContent = shortName(name);
+        ourTeamSel.appendChild(opt);
+      });
+      teamWrap.style.display = 'flex';
+      setStatus('');
+    } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
+  });
+
+  // ── Step 5: Confirm team → load all fixtures ─────────────────
+  confirmBtn.addEventListener('click', async () => {
+    const gradeId = gradeSel.value;
+    const ourTeam = ourTeamSel.value;
+    if (!gradeId || !ourTeam) { setStatus('Please select a team', 'error'); return; }
+
+    resetCardState();
+    confirmBtn.disabled    = true;
+    confirmBtn.textContent = 'Loading…';
+    fb.innerHTML           = '';
+
+    try {
+      setStatus('Fetching fixtures…');
+      const results = await fetchGradeFixtures(gradeId, ourTeam);
+      if (!results.length) throw new Error('No fixtures found');
+
+      // Derive team display info
+      const selectedGrade = _apiState.grades.find(g => g.id === gradeId);
+      const age    = parseGradeAge(selectedGrade?.name||'', selectedGrade?.age?.name, selectedGrade?.gender?.name);
+      const colour = extractColour(ourTeam);
+      const club   = ourTeam
+        .replace(/\s+U\d+.*$/i, '')
+        .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|JFC|Juniors|Junior|FC)\s*$/i, '')
+        .trim();
+      const year        = (_apiState.seasonName||'').match(/\b(20\d{2})\b/)?.[1] || new Date().getFullYear();
+      const displayName = [age, colour, year].filter(Boolean).join(' ');
+
+      const nameEl     = document.getElementById('team-name');
+      const clubEl     = document.getElementById('club-name');
+      const sublabelEl = document.getElementById('team-sublabel');
+      if (nameEl)     { nameEl.value     = displayName;         nameEl.dataset.userEdited     = ''; }
+      if (clubEl)     { clubEl.value     = club;                clubEl.dataset.userEdited     = ''; }
+      if (sublabelEl) { sublabelEl.value = _apiState.league;    sublabelEl.dataset.userEdited = ''; }
+
+      // Colours: colours.json → crest sample → fallback
+      const isGold  = colour.toLowerCase() === 'gold';
+      const clubC   = state.colours[club] || state.colours['_default'];
+      let primary   = clubC ? (isGold ? clubC.secondary : clubC.primary)   : null;
+      let secondary = clubC ? (isGold ? clubC.primary   : clubC.secondary) : null;
+
+      state.ourCrest = null;
+      state.badgeImg = null;
+      resetDerivedOverrides();
+
+      const ourLogoUrl = results[0]?._ourLogoUrl || null;
+      if (ourLogoUrl) {
+        setStatus('Loading logo…');
+        const logoImg = await loadImage(ourLogoUrl);
+        if (logoImg) {
+          state.ourCrest = logoImg;
+          state.badgeImg = logoImg;
+          if (!primary) {
+            const sampled = await sampleCrestColours(ourLogoUrl);
+            if (sampled) { primary = sampled.primary; secondary = sampled.secondary; }
+          }
+        }
+      }
+
+      await Promise.all([loadClubAssets(club), loadCompetitionAssets(_apiState.league)]);
+      setColours(primary || '#1a1a2e', secondary || '#ffffff');
+
+      const venueEl = document.getElementById('home-venue');
+      if (venueEl) { venueEl.value = detectHomeVenue(results); venueEl.dataset.userEdited = ''; }
+
+      setStatus('');
+      processResults(results, fb);
+
+    } catch(err) {
+      setStatus(`Error: ${err.message}`, 'error');
+      fb.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
     }
-    loadBtn.disabled = false;
-    loadBtn.textContent = 'Load';
+    confirmBtn.disabled    = false;
+    confirmBtn.textContent = 'Confirm team';
   });
 })();
+
+
 
 document.getElementById('file-input').addEventListener('change', async e => {
   const file = e.target.files[0]; if (!file) return;
