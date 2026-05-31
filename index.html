@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.150</span>
+    <span class="badge">Beta 0.151</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -1038,9 +1038,7 @@ async function loadCompetitionAssets(leagueName, logoUrl) {
   if (localWm) {
     state.watermarks.monogram_tr = localWm;
   } else if (logoUrl) {
-    const apiImg = await loadImage(logoUrl);
-    if (apiImg) state.watermarks.monogram_tr = toGreyscaleImage(apiImg) || apiImg;
-    else state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
+    state.watermarks.monogram_tr = await toGreyscaleImage(logoUrl) || await loadImage(logoUrl);
   } else {
     state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
   }
@@ -2619,26 +2617,62 @@ function rgbToHex(r, g, b) {
   return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
 }
 
-// Convert a loaded image to a greyscale HTMLImageElement (via canvas)
-// Used for watermarks so colour logos don't bleed through the blend
-function toGreyscaleImage(img) {
-  if (!img) return null;
-  const cv = document.createElement('canvas');
-  cv.width  = img.naturalWidth  || img.width;
-  cv.height = img.naturalHeight || img.height;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0);
-  const id = ctx.getImageData(0, 0, cv.width, cv.height);
-  const px = id.data;
-  for (let i = 0; i < px.length; i += 4) {
-    const g = Math.round(0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2]);
-    px[i] = px[i+1] = px[i+2] = g;
+// Convert an image URL to a greyscale HTMLImageElement (via canvas)
+// Must load with crossOrigin so Cloudinary images don't taint the canvas.
+// Returns a Promise<HTMLImageElement|null>
+async function toGreyscaleImage(src) {
+  if (!src) return null;
+  // src may be an HTMLImageElement (use .src) or a URL string
+  const url = (typeof src === 'string') ? src : src.src;
+  if (!url || url.startsWith('data:')) {
+    // Already a data URL (local asset) — draw directly
+    return new Promise(resolve => {
+      const img = typeof src === 'string' ? Object.assign(new Image(), {src}) : src;
+      const draw = () => {
+        try {
+          const cv = document.createElement('canvas');
+          cv.width = img.naturalWidth || img.width;
+          cv.height = img.naturalHeight || img.height;
+          if (!cv.width || !cv.height) return resolve(null);
+          const ctx = cv.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const id = ctx.getImageData(0, 0, cv.width, cv.height);
+          const px = id.data;
+          for (let i = 0; i < px.length; i += 4) {
+            const g = Math.round(0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2]);
+            px[i] = px[i+1] = px[i+2] = g;
+          }
+          ctx.putImageData(id, 0, 0);
+          const out = new Image(); out.src = cv.toDataURL(); resolve(out);
+        } catch { resolve(null); }
+      };
+      if (img.complete && img.naturalWidth) draw();
+      else { img.onload = draw; img.onerror = () => resolve(null); }
+    });
   }
-  ctx.putImageData(id, 0, 0);
-  // Return as an Image so renderCard can drawImage it
-  const out = new Image();
-  out.src = cv.toDataURL();
-  return out;
+  // Remote URL — reload with crossOrigin=anonymous so canvas isn't tainted
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+        const ctx = cv.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const id = ctx.getImageData(0, 0, cv.width, cv.height);
+        const px = id.data;
+        for (let i = 0; i < px.length; i += 4) {
+          const g = Math.round(0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2]);
+          px[i] = px[i+1] = px[i+2] = g;
+        }
+        ctx.putImageData(id, 0, 0);
+        const out = new Image(); out.src = cv.toDataURL(); resolve(out);
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
 }
 
 // ── Convert API game → fixture row ──────────────────────────────
@@ -2967,8 +3001,10 @@ function populateCompDropdown() {
         state.badgeImg = state.defaultBadge;
       }
       // Use greyscale club crest as bottom-left watermark
-      if (state.ourCrest) state.watermarks.monogram_bl = toGreyscaleImage(state.ourCrest);
-      else if (state.defaultBadge) state.watermarks.monogram_bl = toGreyscaleImage(state.defaultBadge);
+      const crestUrl = teamLogoUrl || results[0]?._ourLogoUrl || null;
+      const compUrl = _apiState.compLogoUrl || null;
+      if (crestUrl) state.watermarks.monogram_bl = await toGreyscaleImage(crestUrl);
+      else if (compUrl) state.watermarks.monogram_bl = await toGreyscaleImage(compUrl);
       setColours(primary || '#1a1a2e', secondary || '#ffffff');
 
       const venueEl = document.getElementById('home-venue');
