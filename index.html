@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.145</span>
+    <span class="badge">Beta 0.146</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -731,7 +731,11 @@ function addAlpha(h, a) {
 const DEFAULT_CONFIG = {
   club_name: "Norwood Junior Football Club",
   home_venue: "Mullum Mullum Reserve",
-  default_scheme: "purple"
+  default_scheme: "purple",
+  competitions: [
+    { name: "Eastern Football Netball League", orgID: "383836bb", league: "Eastern Football Netball League" },
+    { name: "Western Football Netball League", orgID: "4c8b472e", league: "Western Football Netball League" }
+  ]
 };
 
 const DEFAULT_COLOURS = {
@@ -1029,6 +1033,8 @@ async function loadAllAssets() {
   ]);
   state.config = cfg;
   state.colours = colours;
+  // Populate competitions from config — falls back to DEFAULT_CONFIG if config.json absent
+  KNOWN_COMPETITIONS = (cfg.competitions || DEFAULT_CONFIG.competitions || []);
   // scheme now derived from primary/secondary colours
 
   // Badge & watermarks in parallel
@@ -2501,11 +2507,10 @@ const GQL_TEAM_FIXTURE = `
   }
 `;
 
-// ── Known competitions (org IDs are permanent) ───────────────────
-const KNOWN_COMPETITIONS = [
-  { name: 'Eastern Football Netball League', orgID: '383836bb', league: 'Eastern Football Netball League' },
-  { name: 'Western Football Netball League', orgID: '4c8b472e', league: 'Western Football Netball League' },
-];
+// ── Competitions loaded from config.json at startup ─────────────
+// Edit config.json to add/remove competitions — no code changes needed.
+// Each entry: { name, orgID, league }
+let KNOWN_COMPETITIONS = [];  // populated in loadAllAssets() from state.config
 
 // ── GQL: discover competitions + seasons for an org ──────────────
 const GQL_COMPETITIONS = `
