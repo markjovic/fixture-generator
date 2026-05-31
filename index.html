@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.140</span>
+    <span class="badge">Beta 0.142</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -2480,7 +2480,7 @@ const GQL_ROUND_FIXTURES = `
   query discoverFixtureByRound($roundID: ID!) {
     discoverFixtureByRound(roundID: $roundID) {
       games {
-        id date isBye
+        id date
         home { ... on DiscoverTeam { id name logo { sizes { url } } } }
         away { ... on DiscoverTeam { id name logo { sizes { url } } } }
         result {
@@ -2585,7 +2585,7 @@ function rgbToHex(r, g, b) {
 
 // ── Convert API game → fixture row ──────────────────────────────
 function apiGameToFixture(game, ourTeamName, roundName) {
-  if (game.isBye || !game.home || !game.away) return null;
+  if (!game.home || !game.away) return null;
   const ourUp  = ourTeamName.replace(/\s+U\d+.*$/i,'').trim().toUpperCase();
   const homeUp = (game.home.name||'').replace(/\s+U\d+.*$/i,'').trim().toUpperCase();
   const isHome = homeUp === ourUp;
@@ -2650,14 +2650,21 @@ async function fetchGradeFixtures(gradeId, ourTeamName) {
 
 // ── Scan first round to collect team names in a grade ────────────
 async function fetchTeamsInGrade(gradeId) {
+  // Fetch ALL rounds and union team names — avoids missing teams due to byes in R1
   const gradeData = await gqlQuery(GQL_GRADE_ROUNDS, { id: gradeId });
-  const round = (gradeData?.discoverGrade?.rounds || []).find(r => !r.isFinalsRound);
-  if (!round) return [];
-  const d = await gqlQuery(GQL_ROUND_FIXTURES, { roundID: round.id });
+  const rounds = (gradeData?.discoverGrade?.rounds || []).filter(r => !r.isFinalsRound);
+  if (!rounds.length) return [];
   const teams = new Set();
-  (d?.discoverFixtureByRound?.games || []).forEach(g => {
-    if (!g.isBye && g.home && g.away) { teams.add(g.home.name); teams.add(g.away.name); }
-  });
+  const BATCH = 6;
+  for (let i = 0; i < rounds.length; i += BATCH) {
+    const batch = rounds.slice(i, i + BATCH);
+    const batchData = await Promise.all(batch.map(r => gqlQuery(GQL_ROUND_FIXTURES, { roundID: r.id })));
+    batchData.forEach(d => {
+      (d?.discoverFixtureByRound?.games || []).forEach(g => {
+        if (g.home && g.away) { teams.add(g.home.name); teams.add(g.away.name); }
+      });
+    });
+  }
   return [...teams].sort();
 }
 
