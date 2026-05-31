@@ -2504,7 +2504,7 @@ const GQL_TEAM_FIXTURE = `
 // ── Known competitions (org IDs are permanent) ───────────────────
 const KNOWN_COMPETITIONS = [
   { name: 'Eastern Football Netball League', orgID: '383836bb', league: 'Eastern Football Netball League' },
-  { name: 'Western Football Netball League', orgID: 'c1d04617', league: 'Western Football Netball League' },
+  { name: 'Western Football Netball League', orgID: 'TODO', league: 'Western Football Netball League' }, // Need WFNL org ID from DevTools: discoverOrganisation.id in response
 ];
 
 // ── GQL: discover competitions + seasons for an org ──────────────
@@ -2625,6 +2625,41 @@ function apiGameToFixture(game, ourTeamName, roundName) {
   };
 }
 
+
+// ── fetchTeamsInAgeGroup — uses gradeLadder, one call per grade ──
+async function fetchTeamsInAgeGroup(grades) {
+  const teamMap = {};
+  await Promise.all(grades.map(async grade => {
+    const d = await gqlQuery(GQL_GRADE_LADDER, { gradeID: grade.id });
+    const standings = d?.discoverGrade?.ladder?.[0]?.standings || [];
+    standings.forEach(s => {
+      const t = s.team;
+      if (t?.id && !teamMap[t.id]) {
+        const logoUrl = t.logo?.sizes?.find(sz => sz.dimensions?.width === 96)?.url
+          || t.logo?.sizes?.[0]?.url || null;
+        teamMap[t.id] = { name: t.name, teamID: t.id, logoUrl };
+      }
+    });
+  }));
+  return Object.values(teamMap).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── fetchTeamFixtures — uses discoverTeamFixture, one call total ──
+async function fetchTeamFixtures(teamID, ourTeamName) {
+  const data = await gqlQuery(GQL_TEAM_FIXTURE, { teamID });
+  const rounds = data?.discoverTeamFixture || [];
+  const results = [];
+  rounds.forEach(round => {
+    if (round.grade?.type === 'REGULAR') {
+      const roundTime = round.fixture?.games?.[0]?.allocation?.time || '';
+      (round.fixture?.games || []).forEach(g => {
+        const fix = apiGameToFixture(g, ourTeamName, round.name, roundTime);
+        if (fix) results.push(fix);
+      });
+    }
+  });
+  return results;
+}
 
 // ── Main cascade UI ──────────────────────────────────────────────
 (function initAPIUI() {
