@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.151</span>
+    <span class="badge">Beta 0.152</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -1030,7 +1030,14 @@ async function loadCompetitionAssets(leagueName, logoUrl) {
   if (localBadge) {
     state.defaultBadge = localBadge;
   } else if (logoUrl) {
-    state.defaultBadge = await loadImage(logoUrl);
+    // Load with crossOrigin so it can be drawn onto the card canvas
+    state.defaultBadge = await new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = logoUrl;
+    });
   } else {
     state.defaultBadge = await loadImage('assets/badge.png');
   }
@@ -1713,31 +1720,43 @@ async function renderCard() {
 
   if (state.badgeImg) {
     // Crop to content bounds (strip black padding)
-    const bcv = document.createElement('canvas');
-    bcv.width = state.badgeImg.naturalWidth;
-    bcv.height = state.badgeImg.naturalHeight;
-    const bctx = bcv.getContext('2d');
-    bctx.drawImage(state.badgeImg, 0, 0);
-    const bpx = bctx.getImageData(0, 0, bcv.width, bcv.height).data;
-    let bx0=bcv.width, by0=bcv.height, bx1=0, by1=0;
-    for (let py=0; py<bcv.height; py++) {
-      for (let px=0; px<bcv.width; px++) {
-        const i=(py*bcv.width+px)*4;
-        if (bpx[i]+bpx[i+1]+bpx[i+2]>30) {
-          if(px<bx0)bx0=px; if(px>bx1)bx1=px;
-          if(py<by0)by0=py; if(py>by1)by1=py;
+    // Wrapped in try/catch — remote images may taint the canvas if not loaded with crossOrigin
+    try {
+      const bcv = document.createElement('canvas');
+      bcv.width = state.badgeImg.naturalWidth;
+      bcv.height = state.badgeImg.naturalHeight;
+      const bctx = bcv.getContext('2d');
+      bctx.drawImage(state.badgeImg, 0, 0);
+      const bpx = bctx.getImageData(0, 0, bcv.width, bcv.height).data;
+      let bx0=bcv.width, by0=bcv.height, bx1=0, by1=0;
+      for (let py=0; py<bcv.height; py++) {
+        for (let px=0; px<bcv.width; px++) {
+          const i=(py*bcv.width+px)*4;
+          if (bpx[i]+bpx[i+1]+bpx[i+2]>30) {
+            if(px<bx0)bx0=px; if(px>bx1)bx1=px;
+            if(py<by0)by0=py; if(py>by1)by1=py;
+          }
         }
       }
+      const contentW = bx1-bx0+1, contentH = by1-by0+1;
+      const bscale = Math.min(MAX_BW/contentW, MAX_BH/contentH);
+      badgeDrawW = Math.round(contentW * bscale);
+      badgeDrawH = Math.round(contentH * bscale);
+      const bOffY = Math.round((MAX_BH - badgeDrawH) / 2);
+      badgeDrawX = CARD_W - PAD_X - badgeDrawW;
+      badgeDrawY = hy + bOffY;
+      badgeSrcX = bx0; badgeSrcY = by0; badgeSrcW = contentW; badgeSrcH = contentH;
+    } catch {
+      // CORS-tainted image — draw at full size without pixel-scan crop
+      const bscale = Math.min(MAX_BW / state.badgeImg.naturalWidth, MAX_BH / state.badgeImg.naturalHeight);
+      badgeDrawW = Math.round(state.badgeImg.naturalWidth  * bscale);
+      badgeDrawH = Math.round(state.badgeImg.naturalHeight * bscale);
+      badgeDrawX = CARD_W - PAD_X - badgeDrawW;
+      badgeDrawY = hy + Math.round((MAX_BH - badgeDrawH) / 2);
+      badgeSrcX = 0; badgeSrcY = 0;
+      badgeSrcW = state.badgeImg.naturalWidth;
+      badgeSrcH = state.badgeImg.naturalHeight;
     }
-    const contentW = bx1-bx0+1, contentH = by1-by0+1;
-    const bscale = Math.min(MAX_BW/contentW, MAX_BH/contentH);
-    badgeDrawW = Math.round(contentW * bscale);
-    badgeDrawH = Math.round(contentH * bscale);
-    const bOffY = Math.round((MAX_BH - badgeDrawH) / 2);
-    // Right-align: badge right edge sits at CARD_W - PAD_X
-    badgeDrawX = CARD_W - PAD_X - badgeDrawW;
-    badgeDrawY = hy + bOffY;
-    badgeSrcX = bx0; badgeSrcY = by0; badgeSrcW = contentW; badgeSrcH = contentH;
   }
 
   // Header text has a slightly wider left margin than the fixture rows
@@ -2979,7 +2998,14 @@ function populateCompDropdown() {
       const ourLogoUrl = teamLogoUrl || results[0]?._ourLogoUrl || null;
       if (ourLogoUrl) {
         setStatus('Loading logo…');
-        const logoImg = await loadImage(ourLogoUrl);
+        // Load with crossOrigin so canvas pixel-scan doesn't taint the card canvas
+        const logoImg = await new Promise(resolve => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = ourLogoUrl;
+        });
         if (logoImg) {
           state.ourCrest = logoImg;
           state.badgeImg = logoImg;
