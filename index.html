@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.137</span>
+    <span class="badge">Beta 0.138</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -2498,27 +2498,25 @@ const GQL_ROUND_FIXTURES = `
 // Add new competitions here as needed.
 // ── Known competitions (org IDs are permanent; seasons discovered from API) ──
 // Add new competitions here with their PlayHQ organisation ID.
-// ── Known competitions with hardcoded seasons ───────────────────
-// Season IDs are stable for the lifetime of a season.
-// Add new seasons each year. Status 'ACTIVE' sorts to top.
-// GQL_SEASON_GRADES (confirmed working) is used to load grades.
+// ── Known competitions — org IDs are permanent ───────────────────
+// Seasons are discovered live from the API via discoverCompetitions.
 const KNOWN_COMPETITIONS = [
-  {
-    name: 'Eastern Football Netball League',
-    league: 'Eastern Football Netball League',
-    seasons: [
-      { id: '2dcbf383', name: '2026', status: 'ACTIVE' },
-      { id: '75d8a232', name: '2025', status: 'COMPLETED' },
-    ],
-  },
-  {
-    name: 'Western Football Netball League',
-    league: 'Western Football Netball League',
-    seasons: [
-      { id: '2170ac5a', name: '2026', status: 'ACTIVE' },
-    ],
-  },
+  { name: 'Eastern Football Netball League', orgID: '383836bb', league: 'Eastern Football Netball League' },
+  { name: 'Western Football Netball League', orgID: 'c1d04617', league: 'Western Football Netball League' },
 ];
+
+// ── GQL: discover competitions + seasons for an org ──────────────
+const GQL_COMPETITIONS = `
+  query discoverCompetitions($organisationID: ID!, $organisationCode: String!) {
+    discoverCompetitions(organisationID: $organisationID) {
+      id name
+      seasons(organisationID: $organisationID) {
+        id name
+        status { name value }
+      }
+    }
+  }
+`;
 
 // ── API state ────────────────────────────────────────────────────
 let _apiState = {
@@ -2702,32 +2700,48 @@ async function fetchTeamsInGrade(gradeId) {
     compSel.appendChild(opt);
   });
 
-  // ── Step 1: Competition → populate seasons from config ─────────
-  // No API call needed — season IDs are hardcoded in KNOWN_COMPETITIONS.
-  compSel.addEventListener('change', () => {
+  // ── Step 1: Competition → fetch seasons via API ─────────────────
+  compSel.addEventListener('change', async () => {
     resetFrom('season');
     setStatus('');
     const comp = KNOWN_COMPETITIONS.find(c => c.name === compSel.value);
     if (!comp) return;
     _apiState.league = comp.league;
-    // Sort: ACTIVE first, then by name descending
-    const sorted = [...comp.seasons].sort((a, b) => {
-      if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
-      if (b.status === 'ACTIVE' && a.status !== 'ACTIVE') return  1;
-      return b.name.localeCompare(a.name);
-    });
-    sorted.forEach(s => {
-      const opt       = document.createElement('option');
-      opt.value       = s.id;
-      opt.textContent = s.name + (s.status === 'ACTIVE' ? ' ✓' : '');
-      seasonSel.appendChild(opt);
-    });
-    const active = sorted.find(s => s.status === 'ACTIVE');
-    if (sorted.length === 1)  seasonSel.value = sorted[0].id;
-    else if (active)          seasonSel.value = active.id;
-    seasonWrap.style.display = 'flex';
-    // Auto-advance if season is already selected
-    if (seasonSel.value) seasonSel.dispatchEvent(new Event('change'));
+    setStatus('Loading seasons…');
+    try {
+      const data = await gqlQuery(GQL_COMPETITIONS, {
+        organisationID:   comp.orgID,
+        organisationCode: comp.orgID,
+      });
+      const comps = data?.discoverCompetitions || [];
+      if (!comps.length) throw new Error('No competitions found');
+      // Collect all seasons, deduplicate by id
+      const seen = new Set();
+      const allSeasons = [];
+      comps.forEach(comp => {
+        (comp.seasons || []).forEach(s => {
+          if (!seen.has(s.id)) { seen.add(s.id); allSeasons.push(s); }
+        });
+      });
+      // Sort: ACTIVE first, then by name descending (2026 > 2025)
+      allSeasons.sort((a, b) => {
+        if (a.status?.value === 'ACTIVE' && b.status?.value !== 'ACTIVE') return -1;
+        if (b.status?.value === 'ACTIVE' && a.status?.value !== 'ACTIVE') return  1;
+        return b.name.localeCompare(a.name);
+      });
+      allSeasons.forEach(s => {
+        const opt       = document.createElement('option');
+        opt.value       = s.id;
+        opt.textContent = s.name + (s.status?.value === 'ACTIVE' ? ' ✓' : '');
+        seasonSel.appendChild(opt);
+      });
+      const active = allSeasons.find(s => s.status?.value === 'ACTIVE');
+      if (allSeasons.length === 1) seasonSel.value = allSeasons[0].id;
+      else if (active)             seasonSel.value = active.id;
+      seasonWrap.style.display = 'flex';
+      setStatus('');
+      if (seasonSel.value) seasonSel.dispatchEvent(new Event('change'));
+    } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
   });
 
   // ── Step 2: Season → fetch grade list ───────────────────────
@@ -2743,7 +2757,7 @@ async function fetchTeamsInGrade(gradeId) {
       if (!season?.grades?.length) throw new Error('No grades found for this season');
       _apiState.grades     = season.grades;
       _apiState.seasonName = season.name || '';
-      // _apiState.league already set in Step 1
+      // league already set in Step 1 from KNOWN_COMPETITIONS
 
       // Group grades by age group
       const ageOrder = [], ageMap = {};
