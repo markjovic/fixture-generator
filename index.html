@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.148</span>
+    <span class="badge">Beta 0.150</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -976,14 +976,14 @@ async function loadClubImage(clubName, filename, fallback) {
 }
 
 async function loadClubAssets(clubName) {
+  // No fallback — only use local files if they genuinely exist.
+  // API-sourced logos set earlier must not be overwritten by generic defaults.
   const [badge, monogram] = await Promise.all([
-    loadClubImage(clubName, 'badge.png',    'assets/badge.png'),
-    loadClubImage(clubName, 'monogram.png', 'assets/wm_monogram_bl.png'),
+    loadClubImage(clubName, 'badge.png',    null),
+    loadClubImage(clubName, 'monogram.png', null),
   ]);
   if (badge)    state.badgeImg = badge;
-  if (monogram) {
-    state.watermarks.monogram_bl = monogram;
-  }
+  if (monogram) state.watermarks.monogram_bl = monogram;
 }
 
 // Expand known league abbreviations to full names for display
@@ -1021,18 +1021,29 @@ function leagueToSlug(leagueName) {
 async function loadCompetitionAssets(leagueName, logoUrl) {
   const slug = leagueToSlug(leagueName);
   state.competition = slug;
-  // Try local asset first, then API-supplied URL, then default
-  const [badge, wm] = await Promise.all([
+  // Try local assets first
+  const [localBadge, localWm] = await Promise.all([
     loadImage(`assets/competitions/${slug}/badge.png`),
     loadImage(`assets/competitions/${slug}/wm_logo.png`),
   ]);
-  if (badge) state.defaultBadge = badge;
-  else if (logoUrl) state.defaultBadge = await loadImage(logoUrl);
-  else state.defaultBadge = await loadImage('assets/badge.png');
-  // Top-right watermark: local → API URL → default
-  if (wm) state.watermarks.monogram_tr = wm;
-  else if (logoUrl) state.watermarks.monogram_tr = await loadImage(logoUrl);
-  else state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
+  // Badge/header: local → API colour logo → generic default
+  if (localBadge) {
+    state.defaultBadge = localBadge;
+  } else if (logoUrl) {
+    state.defaultBadge = await loadImage(logoUrl);
+  } else {
+    state.defaultBadge = await loadImage('assets/badge.png');
+  }
+  // Top-right watermark: local greyscale → API logo converted to greyscale → generic default
+  if (localWm) {
+    state.watermarks.monogram_tr = localWm;
+  } else if (logoUrl) {
+    const apiImg = await loadImage(logoUrl);
+    if (apiImg) state.watermarks.monogram_tr = toGreyscaleImage(apiImg) || apiImg;
+    else state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
+  } else {
+    state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
+  }
 }
 
 async function loadAllAssets() {
@@ -2368,7 +2379,7 @@ document.getElementById('btn-print').addEventListener('click', () => {
 (async () => {
   await loadAllAssets();
   // Populate competition dropdown now that KNOWN_COMPETITIONS is loaded from config
-  if (typeof populateCompDropdown === 'function') populateCompDropdown();
+  populateCompDropdown();
   // Populate club name from config
   const clubNameEl = document.getElementById('club-name');
   if (clubNameEl && state.config.club_name) {
@@ -2608,6 +2619,28 @@ function rgbToHex(r, g, b) {
   return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
 }
 
+// Convert a loaded image to a greyscale HTMLImageElement (via canvas)
+// Used for watermarks so colour logos don't bleed through the blend
+function toGreyscaleImage(img) {
+  if (!img) return null;
+  const cv = document.createElement('canvas');
+  cv.width  = img.naturalWidth  || img.width;
+  cv.height = img.naturalHeight || img.height;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const id = ctx.getImageData(0, 0, cv.width, cv.height);
+  const px = id.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const g = Math.round(0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2]);
+    px[i] = px[i+1] = px[i+2] = g;
+  }
+  ctx.putImageData(id, 0, 0);
+  // Return as an Image so renderCard can drawImage it
+  const out = new Image();
+  out.src = cv.toDataURL();
+  return out;
+}
+
 // ── Convert API game → fixture row ──────────────────────────────
 function apiGameToFixture(game, ourTeamName, roundName) {
   if (!game.home || !game.away) return null;
@@ -2684,6 +2717,18 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
   return results;
 }
 
+function populateCompDropdown() {
+  const compSel = document.getElementById('comp-select');
+  if (!compSel) return;
+  compSel.innerHTML = '<option value="">— select —</option>';
+  KNOWN_COMPETITIONS.forEach(comp => {
+    const opt = document.createElement('option');
+    opt.value       = comp.name;
+    opt.textContent = comp.name;
+    compSel.appendChild(opt);
+  });
+}
+
 // ── Main cascade UI ──────────────────────────────────────────────
 (function initAPIUI() {
   const compSel    = document.getElementById('comp-select');
@@ -2713,15 +2758,7 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
   }
 
   // Populated after loadAllAssets() via populateCompDropdown()
-  function populateCompDropdown() {
-    compSel.innerHTML = '<option value="">— select —</option>';
-    KNOWN_COMPETITIONS.forEach(comp => {
-      const opt = document.createElement('option');
-      opt.value       = comp.name;
-      opt.textContent = comp.name;
-      compSel.appendChild(opt);
-    });
-  }
+  // (function defined at module scope below so async init can call it)
 
   // ── Manual org ID lookup ─────────────────────────────────────────
   const orgInput = document.getElementById('org-id-input');
@@ -2920,8 +2957,18 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
       }
 
       await Promise.all([loadClubAssets(club), loadCompetitionAssets(_apiState.league, _apiState.compLogoUrl)]);
-      // Use club crest as bottom-left watermark if we have it
-      if (state.ourCrest) state.watermarks.monogram_bl = state.ourCrest;
+      // If no local club badge was found, use the API club logo we set earlier
+      // (loadClubAssets only sets badgeImg if a local file exists — it won't overwrite)
+      if (!state.badgeImg && ourLogoUrl) {
+        state.badgeImg = await loadImage(ourLogoUrl);
+      }
+      // If still no badge, use the comp logo (defaultBadge) in the header
+      if (!state.badgeImg && state.defaultBadge) {
+        state.badgeImg = state.defaultBadge;
+      }
+      // Use greyscale club crest as bottom-left watermark
+      if (state.ourCrest) state.watermarks.monogram_bl = toGreyscaleImage(state.ourCrest);
+      else if (state.defaultBadge) state.watermarks.monogram_bl = toGreyscaleImage(state.defaultBadge);
       setColours(primary || '#1a1a2e', secondary || '#ffffff');
 
       const venueEl = document.getElementById('home-venue');
