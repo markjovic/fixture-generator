@@ -2816,7 +2816,13 @@ async function fetchTeamsInGrade(gradeId) {
       teams.forEach(name => {
         const opt       = document.createElement('option');
         opt.value       = name;
-        opt.textContent = shortName(name);
+        // Keep colour/descriptor after age group so "Norwood Purple" and "Norwood Gold" are distinguishable
+        const displayName = name
+          .replace(/\s+(Junior\s+Football\s+Club|Football\s+Club|Junior\s+FC|JFC|Juniors|Junior|FC)\s*$/i, '')
+          .replace(/\s+U(\d+)\s*/i, ' ')   // collapse "U12 " to a space, keeping what follows
+          .replace(/\s*\/\s*/g, ' / ')
+          .trim().toUpperCase();
+        opt.textContent = displayName;
         ourTeamSel.appendChild(opt);
       });
       teamWrap.style.display = 'flex';
