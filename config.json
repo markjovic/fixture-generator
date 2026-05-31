@@ -1,5 +1,17 @@
 {
   "club_name": "",
   "home_venue": "",
-  "default_scheme": "purple"
+  "default_scheme": "purple",
+  "competitions": [
+    {
+      "name": "Eastern Football Netball League",
+      "orgID": "383836bb",
+      "league": "Eastern Football Netball League"
+    },
+    {
+      "name": "Western Football Netball League",
+      "orgID": "4c8b472e",
+      "league": "Western Football Netball League"
+    }
+  ]
 }
