@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.147</span>
+    <span class="badge">Beta 0.148</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -486,45 +486,40 @@ html, body {
       </div>
     </div>
     <nav class="panel-tabs">
-      <button class="tab-btn active" data-tab="fixtures">Fixtures</button>
-      <button class="tab-btn" data-tab="team">Team</button>
+      <button class="tab-btn active" data-tab="team">Team</button>
+      <button class="tab-btn" data-tab="fixtures">Fixtures</button>
+      <button class="tab-btn" data-tab="details">Details</button>
       <button class="tab-btn" data-tab="scheme">Colours</button>
-      <button class="tab-btn" data-tab="finals">Finals</button>
     </nav>
 
-    <!-- FIXTURES TAB -->
-    <div class="panel-body" id="tab-fixtures">
+    <!-- TEAM TAB (search) — active by default -->
+    <div class="panel-body" id="tab-team">
       <div id="api-section">
-        <!-- Step 1: Competition -->
         <div class="field">
           <label>Competition</label>
           <select id="comp-select">
             <option value="">— select —</option>
           </select>
         </div>
-        <!-- Step 2: Season (discovered from API) -->
         <div id="season-select-wrap" style="display:none" class="field">
           <label>Season</label>
           <select id="season-select">
             <option value="">— select —</option>
           </select>
         </div>
-        <!-- Step 3: Age group -->
         <div id="age-select-wrap" style="display:none" class="field">
           <label>Age group</label>
           <select id="age-select">
             <option value="">— select —</option>
           </select>
         </div>
-        <!-- Step 4: Our team (populated after age group selected) -->
         <div id="team-select-wrap" style="display:none" class="field">
           <label>Your team</label>
           <select id="our-team-select">
             <option value="">— select —</option>
           </select>
-          <button class="btn-generate" id="btn-confirm-team" style="margin-top:8px">Confirm team</button>
+          <button class="btn-generate" id="btn-confirm-team" style="margin-top:8px">Load fixtures</button>
         </div>
-        <!-- Manual org ID lookup -->
         <div style="margin-top:4px">
           <div style="font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Or enter org ID manually</div>
           <div style="display:flex;gap:8px">
@@ -539,6 +534,10 @@ html, body {
         <label>Or upload saved .html file</label>
         <input type="file" id="file-input" accept=".html,.htm">
       </div>
+    </div>
+
+    <!-- FIXTURES TAB -->
+    <div class="panel-body" id="tab-fixtures" style="display:none">
       <div id="parse-feedback"></div>
       <div id="round-section" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -555,12 +554,41 @@ html, body {
       </div>
       <div id="empty-state" style="padding:32px 20px;text-align:center;border:0.5px dashed var(--border);border-radius:var(--radius-lg);color:var(--text3)">
         <p style="font-size:14px;margin-bottom:6px">No fixtures loaded</p>
-        <p style="font-size:12px">Enter a season ID or upload a fixture page above</p>
+        <p style="font-size:12px">Select a team from the Team tab</p>
+      </div>
+      <!-- Finals block moved here from Finals tab -->
+      <div class="divider" style="margin:0 -20px"></div>
+      <div>
+        <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <input type="checkbox" id="has-finals" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+          <label for="has-finals" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;cursor:pointer;color:var(--text)">Include finals block</label>
+        </div>
+        <div id="finals-fields">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Leave a field empty to hide that week.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="field">
+              <label>Week 1 Finals</label>
+              <input type="text" id="finals-w1" value="9/8" placeholder="e.g. 9/8">
+            </div>
+            <div class="field">
+              <label>Week 2 Finals</label>
+              <input type="text" id="finals-w2" value="16/8" placeholder="e.g. 16/8">
+            </div>
+            <div class="field">
+              <label>Week 3 Finals</label>
+              <input type="text" id="finals-w3" placeholder="e.g. 23/8">
+            </div>
+            <div class="field">
+              <label>Grand Final</label>
+              <input type="text" id="finals-gf" value="30/8" placeholder="e.g. 30/8">
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- TEAM TAB -->
-    <div class="panel-body" id="tab-team" style="display:none">
+    <!-- DETAILS TAB (was Team) -->
+    <div class="panel-body" id="tab-details" style="display:none">
       <div class="field">
         <label>Team name</label>
         <input type="text" id="team-name" value="U12 Purple 2026" placeholder="e.g. U12 Purple 2026">
@@ -577,7 +605,6 @@ html, body {
         <label>Home venue <span style="font-weight:400;text-transform:none;letter-spacing:0">(auto-detected from fixture file)</span></label>
         <input type="text" id="home-venue" placeholder="e.g. Mullum Mullum Reserve">
       </div>
-      
     </div>
 
     <!-- COLOURS TAB -->
@@ -621,33 +648,6 @@ html, body {
         <!-- populated by JS -->
       </div>
 
-    </div>
-
-    <!-- FINALS TAB -->
-    <div class="panel-body" id="tab-finals" style="display:none">
-      <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <input type="checkbox" id="has-finals" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
-        <label for="has-finals" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;cursor:pointer;color:var(--text)">Include finals block</label>
-      </div>
-      <div id="finals-fields">
-        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Leave a field empty to hide that week.</p>
-        <div class="field">
-          <label>Week 1 Finals</label>
-          <input type="text" id="finals-w1" value="9/8" placeholder="e.g. 9/8">
-        </div>
-        <div class="field">
-          <label>Week 2 Finals</label>
-          <input type="text" id="finals-w2" value="16/8" placeholder="e.g. 16/8">
-        </div>
-        <div class="field">
-          <label>Week 3 Finals</label>
-          <input type="text" id="finals-w3" placeholder="e.g. 23/8 (optional)">
-        </div>
-        <div class="field">
-          <label>Grand Final</label>
-          <input type="text" id="finals-gf" value="30/8" placeholder="e.g. 30/8">
-        </div>
-      </div>
     </div>
 
   </aside>
@@ -1018,19 +1018,21 @@ function leagueToSlug(leagueName) {
 
 // Load competition-specific badge (header fallback) and top-right watermark logo
 // Falls back to EFNL assets if competition folder doesn't exist
-async function loadCompetitionAssets(leagueName) {
+async function loadCompetitionAssets(leagueName, logoUrl) {
   const slug = leagueToSlug(leagueName);
   state.competition = slug;
+  // Try local asset first, then API-supplied URL, then default
   const [badge, wm] = await Promise.all([
     loadImage(`assets/competitions/${slug}/badge.png`),
     loadImage(`assets/competitions/${slug}/wm_logo.png`),
   ]);
-  // badge: use as defaultBadge (shown when no club badge found)
   if (badge) state.defaultBadge = badge;
-  else        state.defaultBadge = await loadImage('assets/badge.png');
-  // wm logo: top-right watermark
+  else if (logoUrl) state.defaultBadge = await loadImage(logoUrl);
+  else state.defaultBadge = await loadImage('assets/badge.png');
+  // Top-right watermark: local → API URL → default
   if (wm) state.watermarks.monogram_tr = wm;
-  else    state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
+  else if (logoUrl) state.watermarks.monogram_tr = await loadImage(logoUrl);
+  else state.watermarks.monogram_tr = await loadImage('assets/wm_logo.png');
 }
 
 async function loadAllAssets() {
@@ -2376,22 +2378,26 @@ document.getElementById('btn-print').addEventListener('click', () => {
   if (venueEl && state.config.home_venue) {
     venueEl.value = state.config.home_venue;
   }
-  // Panel tabs init
-  document.getElementById('tab-fixtures').style.display = 'flex';
-  document.getElementById('tab-team').style.display = 'none';
+  // Panel tabs init — Team tab is default
+  document.getElementById('tab-team').style.display = 'flex';
+  document.getElementById('tab-fixtures').style.display = 'none';
+  document.getElementById('tab-details').style.display = 'none';
   document.getElementById('tab-scheme').style.display = 'none';
-  document.getElementById('tab-finals').style.display = 'none';
 })();
 
 // Tab switching
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  if (btn) btn.classList.add('active');
+  ['team','fixtures','details','scheme'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t===tabId ? 'flex' : 'none';
+  });
+}
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const tabId = btn.dataset.tab;
-    ['fixtures','team','scheme','finals'].forEach(t => {
-      document.getElementById(`tab-${t}`).style.display = t===tabId ? 'flex' : 'none';
-    });
+    switchTab(btn.dataset.tab);
   });
 });
 
@@ -2542,6 +2548,7 @@ let _apiState = {
   ageMap:  {},
   seasonName: '',
   league: '',
+  compLogoUrl: null,
 };
 
 // ── Grade age/gender parsing ─────────────────────────────────────
@@ -2730,12 +2737,19 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
       compSel.dispatchEvent(new Event('change'));
       return;
     }
-    // Add as ad-hoc entry and trigger load
-    const adHoc = { name: orgID, orgID, league: '' };
-    KNOWN_COMPETITIONS = [...KNOWN_COMPETITIONS, adHoc];
-    populateCompDropdown();
-    compSel.value = orgID;
-    compSel.dispatchEvent(new Event('change'));
+    // Fetch comp name first, then add and select
+    setStatus('Looking up organisation…');
+    try {
+      const data = await gqlQuery(GQL_COMPETITIONS, { organisationID: orgID });
+      const comps = data?.discoverCompetitions || [];
+      const compName = comps[0]?.name || orgID;
+      const adHoc = { name: compName, orgID, league: compName };
+      KNOWN_COMPETITIONS = [...KNOWN_COMPETITIONS, adHoc];
+      populateCompDropdown();
+      compSel.value = compName;
+      setStatus('');
+      compSel.dispatchEvent(new Event('change'));
+    } catch(err) { setStatus(`Error: ${err.message}`, 'error'); }
   });
 
   // ── Step 1: Competition → fetch seasons via API ─────────────────
@@ -2745,6 +2759,7 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
     const comp = KNOWN_COMPETITIONS.find(c => c.name === compSel.value);
     if (!comp) return;
     _apiState.league = comp.league;
+    _apiState.compLogoUrl = null;
     setStatus('Loading seasons…');
     try {
       const data = await gqlQuery(GQL_COMPETITIONS, {
@@ -2752,8 +2767,11 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
       });
       const comps = data?.discoverCompetitions || [];
       if (!comps.length) throw new Error('No competitions found');
-      // Log org ID so it can be added to KNOWN_COMPETITIONS for future use
-      if (comps[0]?.organisation) console.log('Org ID:', comps[0].organisation.id, comps[0].organisation.name);
+      // Store competition logo URL for use in card rendering
+      const orgLogo = comps[0]?.organisation?.logo?.sizes;
+      _apiState.compLogoUrl = orgLogo
+        ? (orgLogo.find(s => s.dimensions?.width === 128)?.url || orgLogo[0]?.url)
+        : null;
       // Collect all seasons, deduplicate by id
       const seen = new Set();
       const allSeasons = [];
@@ -2901,7 +2919,9 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
         }
       }
 
-      await Promise.all([loadClubAssets(club), loadCompetitionAssets(_apiState.league)]);
+      await Promise.all([loadClubAssets(club), loadCompetitionAssets(_apiState.league, _apiState.compLogoUrl)]);
+      // Use club crest as bottom-left watermark if we have it
+      if (state.ourCrest) state.watermarks.monogram_bl = state.ourCrest;
       setColours(primary || '#1a1a2e', secondary || '#ffffff');
 
       const venueEl = document.getElementById('home-venue');
@@ -2909,6 +2929,8 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
 
       setStatus('');
       processResults(results, fb);
+      // Switch to Fixtures tab so user sees the round list
+      switchTab('fixtures');
 
     } catch(err) {
       setStatus(`Error: ${err.message}`, 'error');
