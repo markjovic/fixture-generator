@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.138</span>
+    <span class="badge">Beta 0.139</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -2507,7 +2507,7 @@ const KNOWN_COMPETITIONS = [
 
 // ── GQL: discover competitions + seasons for an org ──────────────
 const GQL_COMPETITIONS = `
-  query discoverCompetitions($organisationID: ID!, $organisationCode: String!) {
+  query discoverCompetitions($organisationID: ID!) {
     discoverCompetitions(organisationID: $organisationID) {
       id name
       seasons(organisationID: $organisationID) {
@@ -2711,7 +2711,6 @@ async function fetchTeamsInGrade(gradeId) {
     try {
       const data = await gqlQuery(GQL_COMPETITIONS, {
         organisationID:   comp.orgID,
-        organisationCode: comp.orgID,
       });
       const comps = data?.discoverCompetitions || [];
       if (!comps.length) throw new Error('No competitions found');
