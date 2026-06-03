@@ -461,7 +461,7 @@ html, body {
   <!-- Header -->
   <header class="app-header">
     <h1>Fixture Card Generator</h1>
-    <span class="badge">Beta 0.153</span>
+    <span class="badge">Beta 0.154</span>
     <button class="btn-panel-toggle" id="btn-panel-toggle" aria-label="Toggle settings panel">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="2" y1="4" x2="14" y2="4"/>
@@ -2705,9 +2705,15 @@ function apiGameToFixture(game, ourTeamName, roundName) {
 
   let date = '', time = '';
   if (game.date) {
-    const d = new Date(game.date);
-    date = `${d.getDate()}/${d.getMonth()+1}`;
-    time = `${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
+    // game.date is "YYYY-MM-DD" — parse without Date() to avoid timezone shifts
+    const parts = game.date.split('-');
+    date = `${parseInt(parts[2])}/${parseInt(parts[1])}`;
+  }
+  // Time comes from game-level allocation.time "HH:MM:SS" — not from the date string
+  const allocTime = game.allocation?.time || '';
+  if (allocTime) {
+    const tp = allocTime.split(':');
+    time = `${parseInt(tp[0])}:${tp[1]}`;
   }
   const venue = game.allocation?.court?.venue?.name || '';
 
@@ -2760,9 +2766,8 @@ async function fetchTeamFixtures(teamID, ourTeamName) {
   const results = [];
   rounds.forEach(round => {
     if (round.grade?.type === 'REGULAR') {
-      const roundTime = round.fixture?.games?.[0]?.allocation?.time || '';
       (round.fixture?.games || []).forEach(g => {
-        const fix = apiGameToFixture(g, ourTeamName, round.name, roundTime);
+        const fix = apiGameToFixture(g, ourTeamName, round.name);
         if (fix) results.push(fix);
       });
     }
